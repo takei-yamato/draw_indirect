@@ -24,20 +24,20 @@
 using namespace dx12;
 
 namespace {
-// オブジェクト数
-constexpr uint32_t objectNum = 4;
+// インスタンス数（同一の物を一度に描画する数）
+constexpr uint32_t instanceNum = 4;
 
 // シーンコンスタントバッファのフォーマット
 struct ConstantBufferFormat {
     // ビュープロジェクション
     DirectX::XMMATRIX viewProj{};
 
-    // メッシュ用の情報
-    DirectX::XMMATRIX world[objectNum]{};
-    DirectX::XMFLOAT4 color[objectNum]{};
+    // オブジェクト用の情報
+    DirectX::XMMATRIX world[instanceNum]{};
+    DirectX::XMFLOAT4 color[instanceNum]{};
 
-    // 描画対象のインデックス
-    uint32_t index[objectNum]{};
+    // 描画インスタンスのインデックス
+    uint32_t index[instanceNum]{};
 };
 
 // 頂点フォーマット
@@ -68,10 +68,10 @@ DirectX::XMMATRIX proj{};
 float aspect = static_cast<float>(window::width()) / static_cast<float>(window::Height());
 
 // 各オブジェクトのワールド行列
-DirectX::XMMATRIX world[objectNum]{};
+DirectX::XMMATRIX world[instanceNum]{};
 
 // 各オブジェクトのカラー
-DirectX::XMFLOAT4 color[objectNum]{};
+DirectX::XMFLOAT4 color[instanceNum]{};
 
 // フレームバッファ(二つ分)
 resource::FrameBuffer frameBuffer(2);
@@ -121,7 +121,7 @@ bool appUpdate() noexcept {
                 input::Input::instance().getKey('4'),
             };
 
-            for (auto i = 0; i < objectNum; ++i) {
+            for (auto i = 0; i < instanceNum; ++i) {
                 if (disable[i]) {
                     continue;
                 }
@@ -253,8 +253,8 @@ INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, INT) {
             sceneConstantBuffer.createBuffer();
             // シーンコンスタントバッファの内容を設定する
             sceneConstantBuffer[0].viewProj = DirectX::XMMatrixTranspose(view * proj);
-			// シーンに登場するオブジェクト毎の内容を設定する
-            for (auto i = 0; i < objectNum; ++i) {
+			// シーンに登場するオブジェクト（描画インスタンス）毎の内容を設定する
+            for (auto i = 0; i < instanceNum; ++i) {
                 sceneConstantBuffer[0].world[i] = DirectX::XMMatrixTranspose(world[i]);
                 sceneConstantBuffer[0].color[i] = color[i];
                 sceneConstantBuffer[0].index[i] = i;

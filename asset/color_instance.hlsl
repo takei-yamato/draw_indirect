@@ -1,18 +1,18 @@
 
-// オブジェクト数
-#define OBJECT_NUM (4)
+// インスタンス数（同一の物を一度に描画する数）
+#define instanceNum (4)
 
 // シーンコンスタントバッファ
 cbuffer global : register(b0) {
 	// ビュープロジェクション
     matrix viewProj;
 
-    // メッシュ用の情報
-    matrix world[OBJECT_NUM];
-    float4 color[OBJECT_NUM];
+    // オブジェクト用の情報
+    matrix world[instanceNum];
+    float4 color[instanceNum];
 
-    // 描画対象のインデックス
-	// ※「int 配列」にしてしまうとパッキング規則からパディングが入る
+    // 描画インスタンスのインデックス
+    // ※「int 配列」にしてしまうとパッキング規則からパディングが入る
     uint4 index;
 };
 
@@ -21,7 +21,7 @@ struct VS_INPUT {
     float4 pos : POSITION;
     float4 uv : TEXCOORD;
 
-    uint instanceId : SV_InstanceID;
+    uint instanceId : SV_InstanceID;	// Draw Call 関数で指定した個数に合わせて、インスタンスの ID (インデックス)が入る
 };
 
 // 頂点シェーダ出力内容
@@ -39,12 +39,12 @@ struct VS_OUTPUT {
 VS_OUTPUT vs(VS_INPUT input) {
     VS_OUTPUT output = (VS_OUTPUT)0;
 
-	// 描画対象のオブジェクトインデックスをインスタンスIDから取得する
-    uint objIndex = index[input.instanceId];
+	// 描画するインスタンスをインスタンスIDから取得する
+    uint instanceIndex = index[input.instanceId];
 
-	// 描画に使う情報を objIndex で取得する
-    output.pos   = mul(mul(input.pos, world[objIndex]), viewProj);
-    output.color = color[objIndex];
+	// 描画に使う情報を instanceIndex で取得する
+    output.pos   = mul(mul(input.pos, world[instanceIndex]), viewProj);
+    output.color = color[instanceIndex];
 
     return output;
 }
