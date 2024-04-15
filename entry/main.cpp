@@ -29,8 +29,11 @@ constexpr uint32_t objectNum = 4;
 
 // シーンコンスタントバッファのフォーマット
 struct ConstantBufferFormat {
+    // ビュープロジェクション
+    DirectX::XMMATRIX viewProj{};
+
     // メッシュ用の情報
-    DirectX::XMMATRIX worldViewProj[objectNum]{};
+    DirectX::XMMATRIX world[objectNum]{};
     DirectX::XMFLOAT4 color[objectNum]{};
 
     // 描画対象のインデックス
@@ -110,7 +113,7 @@ bool appUpdate() noexcept {
         // 描画対象を選ぶ
         auto drawObjNum = 0;
         {
-			// 特定のキーを押下すると対応する対象が表示されなくなる
+            // 特定のキーを押下すると対応する対象が表示されなくなる
             bool disable[] = {
                 input::Input::instance().getKey('1'),
                 input::Input::instance().getKey('2'),
@@ -230,8 +233,6 @@ INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, INT) {
             mesh.createVertexBuffer(vertexData);
             mesh.createIndexBuffer(indexData);
 
-            // コンスタントバッファを作成する
-            sceneConstantBuffer.createBuffer();
 
             // ビュー行列
             view = DirectX::XMMatrixLookToLH(XMLoadFloat3(&eye), XMLoadFloat3(&dir), XMLoadFloat3(&up));
@@ -248,11 +249,15 @@ INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, INT) {
             color[2] = DirectX::XMFLOAT4(0, 0, 1.0f, 1.0f);
             color[3] = DirectX::XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
 
-            // コンスタントバッファの内容を設定する
+            // コンスタントバッファを作成する
+            sceneConstantBuffer.createBuffer();
+            // シーンコンスタントバッファの内容を設定する
+            sceneConstantBuffer[0].viewProj = DirectX::XMMatrixTranspose(view * proj);
+			// シーンに登場するオブジェクト毎の内容を設定する
             for (auto i = 0; i < objectNum; ++i) {
-                sceneConstantBuffer[0].worldViewProj[i] = DirectX::XMMatrixTranspose(world[i] * view * proj);
-                sceneConstantBuffer[0].color[i]         = color[i];
-                sceneConstantBuffer[0].index[i]         = i;
+                sceneConstantBuffer[0].world[i] = DirectX::XMMatrixTranspose(world[i]);
+                sceneConstantBuffer[0].color[i] = color[i];
+                sceneConstantBuffer[0].index[i] = i;
             }
 
             // フェンス（CPUとGPUの同期オブジェクト）を作成する

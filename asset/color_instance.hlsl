@@ -4,8 +4,11 @@
 
 // シーンコンスタントバッファ
 cbuffer global : register(b0) {
+	// ビュープロジェクション
+    matrix viewProj;
+
     // メッシュ用の情報
-    matrix worldViewProj[OBJECT_NUM];
+    matrix world[OBJECT_NUM];
     float4 color[OBJECT_NUM];
 
     // 描画対象のインデックス
@@ -40,7 +43,7 @@ VS_OUTPUT vs(VS_INPUT input) {
     uint objIndex = index[input.instanceId];
 
 	// 描画に使う情報を objIndex で取得する
-    output.pos   = mul(input.pos, worldViewProj[objIndex]);
+    output.pos   = mul(mul(input.pos, world[objIndex]), viewProj);
     output.color = color[objIndex];
 
     return output;
