@@ -35,12 +35,45 @@ bool CommandList::create() noexcept {
         return false;
     }
 
-    commandList_->SetName(L"AA");
+    commandList_->SetName(L"CommandAlloc");
 
     commandList_->Close();
 
     return true;
 }
+
+//---------------------------------------------------------------------------------
+/**
+ * @brief	コマンドリストを作成する
+ * @return	作成に成功した場合は true
+ */
+bool CommandList::createCompute() noexcept {
+    // アロケータ作成
+    auto res = Device::instance().device()->CreateCommandAllocator(
+        D3D12_COMMAND_LIST_TYPE_COMPUTE,
+        IID_PPV_ARGS(commandAllocator_.GetAddressOf()));
+    if (FAILED(res)) {
+        ASSERT(false, "コマンドアロケータ作成に失敗");
+        return false;
+    }
+
+    // コマンドリスト作成
+    res = Device::instance().device()->CreateCommandList(
+        0,
+        D3D12_COMMAND_LIST_TYPE_COMPUTE,
+        commandAllocator_.Get(), nullptr, IID_PPV_ARGS(commandList_.GetAddressOf()));
+    if (FAILED(res)) {
+        ASSERT(false, "コマンドリスト作成に失敗");
+        return false;
+    }
+
+    commandList_->SetName(L"ComputeCommandAlloc");
+
+    commandList_->Close();
+
+    return true;
+}
+
 
 //---------------------------------------------------------------------------------
 /**

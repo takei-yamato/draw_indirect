@@ -11,7 +11,7 @@ namespace dx12::graphics {
  * @brief
  * パイプラインステートオブジェクト
  */
-class PipelineStateObject final : public utility::Noncopyable {
+class PipelineStateObject : public utility::Noncopyable {
 public:
     //---------------------------------------------------------------------------------
     /**
@@ -23,7 +23,7 @@ public:
     /**
      * @brief	デストラクタ
      */
-    ~PipelineStateObject() = default;
+    virtual ~PipelineStateObject() = default;
 
     //---------------------------------------------------------------------------------
     /**
@@ -39,24 +39,24 @@ public:
      */
     void setToCommandList(CommandList& commandList) noexcept;
 
-private:
+protected:
     //---------------------------------------------------------------------------------
     /**
      * @brief	パイプラインステートを作成する
      * @return	作成に成功した場合は true
      */
-    bool createPipelineState() noexcept;
+    virtual bool createPipelineState() noexcept = 0;
 
     //---------------------------------------------------------------------------------
     /**
      * @brief	ルートシグネチャを作成する
      * @return	作成に成功した場合は true
      */
-    bool createRootSignature() noexcept;
+    virtual bool createRootSignature() noexcept = 0;
 
-private:
-    Microsoft::WRL::ComPtr<ID3D12PipelineState> pipelineState_ = {};  ///< パイプラインステート
-    Microsoft::WRL::ComPtr<ID3D12RootSignature> rootSignature_ = {};  ///< ルートシグネチャ
-    std::unique_ptr<Shader>                     shader_        = {};  ///< シェーダ
+protected:
+    Microsoft::WRL::ComPtr<ID3D12PipelineState> pipelineState_{};  ///< パイプラインステート
+    Microsoft::WRL::ComPtr<ID3D12RootSignature> rootSignature_{};  ///< ルートシグネチャ
+    std::unique_ptr<Shader>                     shader_{};         ///< シェーダ
 };
 }  // namespace dx12::graphics

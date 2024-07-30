@@ -11,7 +11,7 @@ namespace utility {
  * @brief
  * スレッド制御クラス
  */
-class Thread final : Noncopyable {
+class Thread final : public Noncopyable {
 private:
     using WorkerFunc = std::function<uint32_t(void*)>;
 

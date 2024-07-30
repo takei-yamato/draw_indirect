@@ -37,7 +37,7 @@
     <ClCompile Include="dx12\graphics\shader.cpp">
       <Filter>dx12\graphics</Filter>
     </ClCompile>
-    <ClCompile Include="dx12\resource\constant_buffer.cpp">
+    <ClCompile Include="dx12\resource\gpu_buffer.cpp">
       <Filter>dx12\resource</Filter>
     </ClCompile>
     <ClCompile Include="dx12\resource\frame_buffer.cpp">
@@ -48,6 +48,24 @@
     </ClCompile>
     <ClCompile Include="utility\log.cpp">
       <Filter>utility</Filter>
+    </ClCompile>
+    <ClCompile Include="dx12\descriptor_heap.cpp">
+      <Filter>dx12</Filter>
+    </ClCompile>
+    <ClCompile Include="dx12\resource\shader_resource.cpp">
+      <Filter>dx12\resource</Filter>
+    </ClCompile>
+    <ClCompile Include="dx12\resource\unordered_access.cpp">
+      <Filter>dx12\resource</Filter>
+    </ClCompile>
+    <ClCompile Include="dx12\resource\constant.cpp">
+      <Filter>dx12\resource</Filter>
+    </ClCompile>
+    <ClCompile Include="dx12\graphics\graphics_pipeline_state_object.cpp">
+      <Filter>dx12\graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="dx12\graphics\compute_pipeline_state_object.cpp">
+      <Filter>dx12\graphics</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -88,7 +106,7 @@
     <ClInclude Include="dx12\graphics\shader.h">
       <Filter>dx12\graphics</Filter>
     </ClInclude>
-    <ClInclude Include="dx12\resource\constant_buffer.h">
+    <ClInclude Include="dx12\resource\gpu_buffer.h">
       <Filter>dx12\resource</Filter>
     </ClInclude>
     <ClInclude Include="dx12\resource\frame_buffer.h">
@@ -102,6 +120,24 @@
     </ClInclude>
     <ClInclude Include="utility\log.h">
       <Filter>utility</Filter>
+    </ClInclude>
+    <ClInclude Include="dx12\descriptor_heap.h">
+      <Filter>dx12</Filter>
+    </ClInclude>
+    <ClInclude Include="dx12\resource\shader_resource.h">
+      <Filter>dx12\resource</Filter>
+    </ClInclude>
+    <ClInclude Include="dx12\resource\unordered_access.h">
+      <Filter>dx12\resource</Filter>
+    </ClInclude>
+    <ClInclude Include="dx12\resource\constant.h">
+      <Filter>dx12\resource</Filter>
+    </ClInclude>
+    <ClInclude Include="dx12\graphics\graphics_pipeline_state_object.h">
+      <Filter>dx12\graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="dx12\graphics\compute_pipeline_state_object.h">
+      <Filter>dx12\graphics</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

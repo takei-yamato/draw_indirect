@@ -7,14 +7,15 @@ namespace dx12 {
 //---------------------------------------------------------------------------------
 /**
  * @brief	コマンドキューを生成する
+ * @param	type		対象の種類
  * @return	正しく生成できた場合は true
  */
-bool CommandQueue::create() noexcept {
+bool CommandQueue::create(Type type) noexcept {
     // コマンドキュー作成
     D3D12_COMMAND_QUEUE_DESC queueDesc = {};
 
     queueDesc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
-    queueDesc.Type  = D3D12_COMMAND_LIST_TYPE_DIRECT;
+    queueDesc.Type  = type == Type::Compute ? D3D12_COMMAND_LIST_TYPE_COMPUTE : D3D12_COMMAND_LIST_TYPE_DIRECT;
     auto res        = Device::instance().device()->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(commandQueue_.GetAddressOf()));
     if (FAILED(res)) {
         ASSERT(false, "コマンドキュー作成に失敗");
