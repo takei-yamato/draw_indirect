@@ -10,16 +10,16 @@
 
 #include "utility/noncopyable.h"
 
-namespace dx12::resource {
+namespace dx12 {
 
 
 //---------------------------------------------------------------------------------
 /**
  * @brief
- * GPUバッファ
+ * GPUリソース
  */
 template <class R, class T, uint32_t Num>
-class Buffer final : utility::Noncopyable {
+class Resource final : utility::Noncopyable {
 private:
     using type = T;
     using res  = R;
@@ -29,7 +29,7 @@ public:
     /**
      * @brief	コンストラクタ
      */
-    Buffer() {
+    Resource() {
         resource_.reset(new res());
     }
 
@@ -37,7 +37,7 @@ public:
     /**
      * @brief	デストラクタ
      */
-    ~Buffer() = default;
+    ~Resource() = default;
 
     //---------------------------------------------------------------------------------
     /**

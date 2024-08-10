@@ -9,10 +9,10 @@
 #include "dx12/device.h"
 #include "dx12/swap_chain.h"
 #include "dx12/fence.h"
+#include "dx12/gpu_resource.h"
 
 #include "dx12/graphics/compute_pipeline_state_object.h"
 
-#include "dx12/resource/gpu_buffer.h"
 #include "dx12/resource/mesh.h"
 #include "dx12/resource/frame_buffer.h"
 
@@ -33,9 +33,9 @@ resource::FrameBuffer frameBuffer(2);
 DescriptorHeap descriptorHeap{};
 
 // UAバッファ
-resource::Buffer<resource::UnorderedAccess, int, 100> unorderedAccessBuffer{};
+Resource<resource::UnorderedAccess, int, 100> unorderedAccess{};
 // SRバッファ
-resource::Buffer<resource::ShaderResource, int, 100> shaderResourceBuffer{};
+Resource<resource::ShaderResource, int, 100> shaderResource{};
 
 // パイプラインステートオブジェクト
 graphics::ComputePipelineStateObject pso{};
@@ -67,7 +67,7 @@ bool appUpdate() noexcept {
     {
         auto updateResource = [&](auto mul) {
             for (auto i = 0; i < 100; ++i) {
-                shaderResourceBuffer[i] = i * mul;
+                shaderResource[i] = i * mul;
             }
         };
 
@@ -92,8 +92,8 @@ bool appUpdate() noexcept {
 
         descriptorHeap.setToCommandList(commandListCompute);
 
-        shaderResourceBuffer.setToCommandList(commandListCompute, 0);
-        unorderedAccessBuffer.setToCommandList(commandListCompute, 0);
+        shaderResource.setToCommandList(commandListCompute, 0);
+        unorderedAccess.setToCommandList(commandListCompute, 0);
 
         commandListCompute.get()->Dispatch(4, 4, 1);
         commandListCompute.get()->Close();
@@ -124,9 +124,9 @@ bool appUpdate() noexcept {
 
     // 結果をコンソールに表示する
     if (displayOnConsole) {
-        TRACE("!!!!! unorderedAccessBuffer の内容が更新されました !!!!!");
+        TRACE("!!!!! unorderedAccess の内容が更新されました !!!!!");
 		for (auto i = 0; i < 100; ++i) {
-            auto ans = unorderedAccessBuffer[i];
+            auto ans = unorderedAccess[i];
             TRACE("%d", ans);
         }
     }
@@ -169,12 +169,12 @@ INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, INT) {
             SwapChain::instance().create(commandQueue, frameBuffer);
 
             // SRバッファを作成する
-            shaderResourceBuffer.create();
-            shaderResourceBuffer.createView(descriptorHeap);
+            shaderResource.create();
+            shaderResource.createView(descriptorHeap);
 
             // UAバッファを作成する
-            unorderedAccessBuffer.create();
-            unorderedAccessBuffer.createView(descriptorHeap);
+            unorderedAccess.create();
+            unorderedAccess.createView(descriptorHeap);
 
             // フェンス（CPUとGPUの同期オブジェクト）を作成する
             fence.create();

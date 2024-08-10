@@ -165,12 +165,12 @@
     <ClCompile Include="dx12\descriptor_heap.cpp" />
     <ClCompile Include="dx12\device.cpp" />
     <ClCompile Include="dx12\fence.cpp" />
+    <ClCompile Include="dx12\gpu_resource.cpp" />
     <ClCompile Include="dx12\graphics\compute_pipeline_state_object.cpp" />
     <ClCompile Include="dx12\graphics\graphics_pipeline_state_object.cpp" />
     <ClCompile Include="dx12\graphics\pipeline_state_object.cpp" />
     <ClCompile Include="dx12\graphics\shader.cpp" />
     <ClCompile Include="dx12\resource\constant.cpp" />
-    <ClCompile Include="dx12\resource\gpu_buffer.cpp" />
     <ClCompile Include="dx12\resource\frame_buffer.cpp" />
     <ClCompile Include="dx12\resource\mesh.cpp" />
     <ClCompile Include="dx12\resource\shader_resource.cpp" />
@@ -190,12 +190,12 @@
     <ClInclude Include="dx12\descriptor_heap.h" />
     <ClInclude Include="dx12\device.h" />
     <ClInclude Include="dx12\fence.h" />
+    <ClInclude Include="dx12\gpu_resource.h" />
     <ClInclude Include="dx12\graphics\compute_pipeline_state_object.h" />
     <ClInclude Include="dx12\graphics\graphics_pipeline_state_object.h" />
     <ClInclude Include="dx12\graphics\pipeline_state_object.h" />
     <ClInclude Include="dx12\graphics\shader.h" />
     <ClInclude Include="dx12\resource\constant.h" />
-    <ClInclude Include="dx12\resource\gpu_buffer.h" />
     <ClInclude Include="dx12\resource\frame_buffer.h" />
     <ClInclude Include="dx12\resource\mesh.h" />
     <ClInclude Include="dx12\resource\shader_resource.h" />
