@@ -33,9 +33,9 @@ resource::FrameBuffer frameBuffer(2);
 DescriptorHeap descriptorHeap{};
 
 // UAバッファ
-Resource<resource::UnorderedAccess, int, 100> unorderedAccess{};
+Resource<resource::UnorderedAccess, int, 256> unorderedAccess{};
 // SRバッファ
-Resource<resource::ShaderResource, int, 100> shaderResource{};
+Resource<resource::ShaderResource, int, 256> shaderResource{};
 
 // パイプラインステートオブジェクト
 graphics::ComputePipelineStateObject pso{};
@@ -66,7 +66,7 @@ bool appUpdate() noexcept {
     bool        displayOnConsole{};
     {
         auto updateResource = [&](auto mul) {
-            for (auto i = 0; i < 100; ++i) {
+            for (auto i = 0; i < shaderResource.num(); ++i) {
                 shaderResource[i] = i * mul;
             }
         };
@@ -125,7 +125,7 @@ bool appUpdate() noexcept {
     // 結果をコンソールに表示する
     if (displayOnConsole) {
         TRACE("!!!!! unorderedAccess の内容が更新されました !!!!!");
-		for (auto i = 0; i < 100; ++i) {
+        for (auto i = 0; i < unorderedAccess.num(); ++i) {
             auto ans = unorderedAccess[i];
             TRACE("%d", ans);
         }

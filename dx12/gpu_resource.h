@@ -12,7 +12,6 @@
 
 namespace dx12 {
 
-
 //---------------------------------------------------------------------------------
 /**
  * @brief
@@ -77,8 +76,26 @@ public:
         return *(reinterpret_cast<type*>(address));
     }
 
+    //---------------------------------------------------------------------------------
+    /**
+     * @brief	バッファのストライド
+     * @return	ストライドサイズ
+     */
+    uint32_t stride() const noexcept {
+        return sizeof(type);
+    }
+
+    //---------------------------------------------------------------------------------
+    /**
+     * @brief	バッファ要素数
+     * @return	要素数
+     */
+    uint32_t num() const noexcept {
+        return Num;
+    }
+
 private:
     std::unique_ptr<res> resource_{};
     type*                data_{};  ///< CPUで内容を変更する際のアクセス先アドレス
 };
-}  // namespace dx12::resource
+}  // namespace dx12
