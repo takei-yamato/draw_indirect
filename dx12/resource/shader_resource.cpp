@@ -70,7 +70,7 @@ bool ShaderResource::create(void** data, uint32_t stride, uint32_t num) noexcept
  * @brief	ビューを生成する
  * @param	descriptorHeap	ビュー（ディスクリプタ）登録先のヒープ
  */
-void ShaderResource::createView(DescriptorHeap& descriptorHeap) noexcept {
+void ShaderResourceView::createView(DescriptorHeap& descriptorHeap, ResourceBase* resourceBase) noexcept {
     handle_ = descriptorHeap.allocate(1);
 
     // SRV 作成
@@ -78,12 +78,12 @@ void ShaderResource::createView(DescriptorHeap& descriptorHeap) noexcept {
     srvDesc.ViewDimension                   = D3D12_SRV_DIMENSION_BUFFER;
     srvDesc.Format                          = DXGI_FORMAT_UNKNOWN;
     srvDesc.Shader4ComponentMapping         = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-    srvDesc.Buffer.NumElements              = num_;
-    srvDesc.Buffer.StructureByteStride      = stride_;
+    srvDesc.Buffer.NumElements              = resourceBase->num();
+    srvDesc.Buffer.StructureByteStride      = resourceBase->stride();
     srvDesc.Buffer.Flags                    = D3D12_BUFFER_SRV_FLAG_NONE;
 
     auto handle = handle_.cpuHandle_;
-    dx12::Device::instance().device()->CreateShaderResourceView(gpuResource_.Get(), &srvDesc, handle);
+    dx12::Device::instance().device()->CreateShaderResourceView(resourceBase->resource(), &srvDesc, handle);
 }
 
 //---------------------------------------------------------------------------------
@@ -92,20 +92,10 @@ void ShaderResource::createView(DescriptorHeap& descriptorHeap) noexcept {
  * @param	commandList		設定先のコマンドリスト
  * @param	index			バッファのインデックス
  */
-void ShaderResource::setToCommandList(dx12::CommandList& commandList, uint32_t index) noexcept {
+void ShaderResourceView::setToCommandList(dx12::CommandList& commandList, uint32_t index) noexcept {
     // バッファビューの設定
     auto handle = handle_.gpuHandle_;
     commandList.get()->SetComputeRootDescriptorTable(0, handle);
-}
-
-//---------------------------------------------------------------------------------
-/**
- * @brief	オフセットを取得する
- * @param	index			バッファのインデックス
- * @return	インデックスに対応するオフセット
- */
-uint64_t ShaderResource::offset(uint32_t index) const noexcept {
-    return index * stride_;
 }
 
 

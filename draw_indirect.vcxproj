@@ -170,7 +170,6 @@
     <ClCompile Include="dx12\graphics\graphics_pipeline_state_object.cpp" />
     <ClCompile Include="dx12\graphics\pipeline_state_object.cpp" />
     <ClCompile Include="dx12\graphics\shader.cpp" />
-    <ClCompile Include="dx12\resource\constant.cpp" />
     <ClCompile Include="dx12\resource\frame_buffer.cpp" />
     <ClCompile Include="dx12\resource\mesh.cpp" />
     <ClCompile Include="dx12\resource\shader_resource.cpp" />
@@ -195,7 +194,6 @@
     <ClInclude Include="dx12\graphics\graphics_pipeline_state_object.h" />
     <ClInclude Include="dx12\graphics\pipeline_state_object.h" />
     <ClInclude Include="dx12\graphics\shader.h" />
-    <ClInclude Include="dx12\resource\constant.h" />
     <ClInclude Include="dx12\resource\frame_buffer.h" />
     <ClInclude Include="dx12\resource\mesh.h" />
     <ClInclude Include="dx12\resource\shader_resource.h" />

@@ -20,7 +20,7 @@ namespace dx12::resource {
  * @param	num			バッファの数
  * @return	作成に成功した場合は true
  */
-bool UnorderedAccess::create(void** data, uint32_t stride, uint32_t num) noexcept {
+bool UnorderedAccessResource::create(void** data, uint32_t stride, uint32_t num) noexcept {
     // GPUリソース作成
     D3D12_HEAP_PROPERTIES heapProperty = {};
     heapProperty.Type                  = D3D12_HEAP_TYPE_CUSTOM;
@@ -71,18 +71,18 @@ bool UnorderedAccess::create(void** data, uint32_t stride, uint32_t num) noexcep
  * @brief	ビューを生成する
  * @param	descriptorHeap	ビュー（ディスクリプタ）登録先のヒープ
  */
-void UnorderedAccess::createView(DescriptorHeap& descriptorHeap) noexcept {
+void UnorderedAccessView::createView(DescriptorHeap& descriptorHeap, ResourceBase* resourceBase) noexcept {
     handle_ = descriptorHeap.allocate(1);
 
     // UAV 作成
     D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
     uavDesc.ViewDimension                    = D3D12_UAV_DIMENSION_BUFFER;
     uavDesc.Format                           = DXGI_FORMAT_UNKNOWN;
-    uavDesc.Buffer.NumElements               = num_;
-    uavDesc.Buffer.StructureByteStride       = stride_;
+    uavDesc.Buffer.NumElements               = resourceBase->num();
+    uavDesc.Buffer.StructureByteStride       = resourceBase->stride();
 
     auto handle = handle_.cpuHandle_;
-    dx12::Device::instance().device()->CreateUnorderedAccessView(gpuResource_.Get(), nullptr, &uavDesc, handle);
+    dx12::Device::instance().device()->CreateUnorderedAccessView(resourceBase->resource(), nullptr, &uavDesc, handle);
 }
 
 //---------------------------------------------------------------------------------
@@ -91,21 +91,14 @@ void UnorderedAccess::createView(DescriptorHeap& descriptorHeap) noexcept {
  * @param	commandList		設定先のコマンドリスト
  * @param	index			バッファのインデックス
  */
-void UnorderedAccess::setToCommandList(dx12::CommandList& commandList, uint32_t index) noexcept {
+void UnorderedAccessView::setToCommandList(dx12::CommandList& commandList, uint32_t index) noexcept {
     // バッファビューの設定
     auto handle = handle_.gpuHandle_;
     commandList.get()->SetComputeRootDescriptorTable(1, handle);
 }
 
-//---------------------------------------------------------------------------------
-/**
- * @brief	オフセットを取得する
- * @param	index			バッファのインデックス
- * @return	インデックスに対応するオフセット
- */
-uint64_t UnorderedAccess::offset(uint32_t index) const noexcept {
-    return index * stride_;
-}
+
+
 
 
 }  // namespace dx12::resource

@@ -9,7 +9,8 @@
 #include "dx12/device.h"
 #include "dx12/swap_chain.h"
 #include "dx12/fence.h"
-#include "dx12/gpu_resource.h"
+#include "dx12/resource/unordered_access.h"
+#include "dx12/resource/shader_resource.h"
 
 #include "dx12/graphics/compute_pipeline_state_object.h"
 
@@ -32,10 +33,10 @@ resource::FrameBuffer frameBuffer(2);
 // ディスクリプタヒープ
 DescriptorHeap descriptorHeap{};
 
-// UAバッファ
-Resource<resource::UnorderedAccess, int, 256> unorderedAccess{};
-// SRバッファ
-Resource<resource::ShaderResource, int, 256> shaderResource{};
+// アンオーダードアクセス
+resource::UnorderedAccessObj<int, 256> unorderedAccess{};
+// シェーダリソース
+resource::ShaderResourceObj<int, 256> shaderResource{};
 
 // パイプラインステートオブジェクト
 graphics::ComputePipelineStateObject pso{};
@@ -66,7 +67,7 @@ bool appUpdate() noexcept {
     bool        displayOnConsole{};
     {
         auto updateResource = [&](auto mul) {
-            for (auto i = 0; i < shaderResource.num(); ++i) {
+            for (auto i = 0; i < 256; ++i) {
                 shaderResource[i] = i * mul;
             }
         };
@@ -125,7 +126,7 @@ bool appUpdate() noexcept {
     // 結果をコンソールに表示する
     if (displayOnConsole) {
         TRACE("!!!!! unorderedAccess の内容が更新されました !!!!!");
-        for (auto i = 0; i < unorderedAccess.num(); ++i) {
+        for (auto i = 0; i < 256; ++i) {
             auto ans = unorderedAccess[i];
             TRACE("%d", ans);
         }
@@ -168,13 +169,11 @@ INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, INT) {
             // スワップチェインを作成する
             SwapChain::instance().create(commandQueue, frameBuffer);
 
-            // SRバッファを作成する
+            // リソースとビューを作成する
             shaderResource.create();
             shaderResource.createView(descriptorHeap);
-
-            // UAバッファを作成する
             unorderedAccess.create();
-            unorderedAccess.createView(descriptorHeap);
+			unorderedAccess.createView(descriptorHeap);
 
             // フェンス（CPUとGPUの同期オブジェクト）を作成する
             fence.create();

@@ -55,9 +55,6 @@
     <ClCompile Include="dx12\resource\unordered_access.cpp">
       <Filter>dx12\resource</Filter>
     </ClCompile>
-    <ClCompile Include="dx12\resource\constant.cpp">
-      <Filter>dx12\resource</Filter>
-    </ClCompile>
     <ClCompile Include="dx12\graphics\graphics_pipeline_state_object.cpp">
       <Filter>dx12\graphics</Filter>
     </ClCompile>
@@ -125,9 +122,6 @@
       <Filter>dx12\resource</Filter>
     </ClInclude>
     <ClInclude Include="dx12\resource\unordered_access.h">
-      <Filter>dx12\resource</Filter>
-    </ClInclude>
-    <ClInclude Include="dx12\resource\constant.h">
       <Filter>dx12\resource</Filter>
     </ClInclude>
     <ClInclude Include="dx12\graphics\graphics_pipeline_state_object.h">

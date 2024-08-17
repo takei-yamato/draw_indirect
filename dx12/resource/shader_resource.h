@@ -2,8 +2,7 @@
 
 #include "dx12/device.h"
 #include "dx12/command_list.h"
-
-#include "dx12/descriptor_heap.h"
+#include "dx12/gpu_resource.h"
 
 #include "utility/noncopyable.h"
 
@@ -12,38 +11,35 @@ namespace dx12::resource {
 //---------------------------------------------------------------------------------
 /**
  * @brief
- * シェーダーリソース
+ * シェーダリソース
  */
-class ShaderResource final : public utility::Noncopyable {
+class ShaderResource final : public ResourceBase {
 public:
     //---------------------------------------------------------------------------------
     /**
-     * @brief	コンストラクタ
-     */
-    ShaderResource() = default;
-
-    //---------------------------------------------------------------------------------
-    /**
-     * @brief	デストラクタ
-     */
-    ~ShaderResource() = default;
-
-    //---------------------------------------------------------------------------------
-    /**
-     * @brief	UAバッファを生成する
+     * @brief	リソースを生成する
      * @param	data		データの先頭アドレス
      * @param	stride		バッファのストライド
      * @param	num			バッファの数
      * @return	作成に成功した場合は true
      */
-    bool create(void** data, uint32_t stride, uint32_t num) noexcept;
+    bool create(void** data, uint32_t stride, uint32_t num) noexcept override;
+};
 
+//---------------------------------------------------------------------------------
+/**
+ * @brief
+ * シェーダリソースビュー
+ */
+class ShaderResourceView final : public ResourceViewBase {
+public:
     //---------------------------------------------------------------------------------
     /**
      * @brief	ビューを生成する
      * @param	descriptorHeap	ビュー（ディスクリプタ）登録先のヒープ
+     * @param	resourceBase	リソース
      */
-    void createView(DescriptorHeap& descriptorHeap) noexcept;
+    void createView(DescriptorHeap& descriptorHeap, ResourceBase* resourceBase) noexcept override;
 
     //---------------------------------------------------------------------------------
     /**
@@ -51,22 +47,31 @@ public:
      * @param	commandList		設定先のコマンドリスト
      * @param	index			バッファのインデックス
      */
-    void setToCommandList(CommandList& commandList, uint32_t index) noexcept;
+    void setToCommandList(dx12::CommandList& commandList, uint32_t index) noexcept override;
+};
+
+//---------------------------------------------------------------------------------
+/**
+ * @brief
+ * シェーダリソース
+ */
+template <class T, uint32_t NUM = 1>
+class ShaderResourceObj final : public GpuObj<T, NUM> {
+public:
+    //---------------------------------------------------------------------------------
+    /**
+     * @brief	コンストラクタ
+     */
+    ShaderResourceObj() {
+        this->resource_.reset(new ShaderResource());
+        this->view_.reset(new ShaderResourceView());
+    }
 
     //---------------------------------------------------------------------------------
     /**
-     * @brief	オフセットを取得する
-     * @param	index			UAバッファのインデックス
-     * @return	インデックスに対応するオフセット
+     * @brief	デストラクタ
      */
-    uint64_t offset(uint32_t index) const noexcept;
-
-private:
-    DescriptorHeap::Handle                       handle_{};
-    Microsoft::WRL::ComPtr<ID3D12Resource>       gpuResource_{};  ///< リソース
-    uint32_t                                     stride_{};       ///< バッファのストライド
-    uint32_t                                     num_{};          ///< バッファ数
+    ~ShaderResourceObj() = default;
 };
-
 
 }  // namespace dx12::resource
