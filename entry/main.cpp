@@ -94,7 +94,7 @@ bool appUpdate() noexcept {
         descriptorHeap.setToCommandList(commandListCompute);
 
         shaderResource.setToCommandList(commandListCompute, 0);
-        unorderedAccess.setToCommandList(commandListCompute, 0);
+        unorderedAccess.setToCommandList(commandListCompute, 1);
 
         commandListCompute.get()->Dispatch(4, 4, 1);
         commandListCompute.get()->Close();

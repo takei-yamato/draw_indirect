@@ -94,7 +94,7 @@ void UnorderedAccessView::createView(DescriptorHeap& descriptorHeap, ResourceBas
 void UnorderedAccessView::setToCommandList(dx12::CommandList& commandList, uint32_t index) noexcept {
     // バッファビューの設定
     auto handle = handle_.gpuHandle_;
-    commandList.get()->SetComputeRootDescriptorTable(1, handle);
+    commandList.get()->SetComputeRootDescriptorTable(index, handle);
 }
 
 
