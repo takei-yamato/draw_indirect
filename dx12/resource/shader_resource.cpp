@@ -53,12 +53,6 @@ bool ShaderResource::create(void** data, uint32_t stride, uint32_t num) noexcept
         return false;
     }
 
-    res = gpuResource_->Map(0, nullptr, data);
-    if (FAILED(res)) {
-        ASSERT(false, "Map に失敗");
-        return false;
-    }
-
     stride_ = stride;
     num_    = num;
 

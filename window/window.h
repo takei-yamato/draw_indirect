@@ -14,7 +14,7 @@ uint32_t width() noexcept;
 /**
  * @brief	ウィンドウの縦幅を取得する
  */
-uint32_t Height() noexcept;
+uint32_t height() noexcept;
 
 //---------------------------------------------------------------------------------
 /**

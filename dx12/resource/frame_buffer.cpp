@@ -103,7 +103,7 @@ void FrameBuffer::setToRenderTarget(CommandList& commandList) noexcept {
     viewport.TopLeftX       = 0.0f;
     viewport.TopLeftY       = 0.0f;
     viewport.Width          = static_cast<float>(window::width());
-    viewport.Height         = static_cast<float>(window::Height());
+    viewport.Height         = static_cast<float>(window::height());
     viewport.MinDepth       = D3D12_MIN_DEPTH;
     viewport.MaxDepth       = D3D12_MAX_DEPTH;
     commandList.get()->RSSetViewports(1, &viewport);
@@ -113,7 +113,7 @@ void FrameBuffer::setToRenderTarget(CommandList& commandList) noexcept {
     rect.left       = 0;
     rect.top        = 0;
     rect.right      = window::width();
-    rect.bottom     = window::Height();
+    rect.bottom     = window::height();
     commandList.get()->RSSetScissorRects(1, &rect);
 }
 
@@ -133,6 +133,15 @@ void FrameBuffer::finishRendering(CommandList& commandList) noexcept {
  */
 void FrameBuffer::updateBufferIndex(uint32_t index) noexcept {
     currentBufferIndex_ = index;
+}
+
+//---------------------------------------------------------------------------------
+/**
+ * @brief	現在のフレームバッファのインデックスを取得する
+ * @return	現在のインデックス
+ */
+uint32_t FrameBuffer::currentBufferIndex() const noexcept {
+    return currentBufferIndex_;
 }
 
 //---------------------------------------------------------------------------------

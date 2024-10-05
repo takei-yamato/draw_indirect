@@ -67,6 +67,9 @@
     <ClCompile Include="dx12\resource\constant.cpp">
       <Filter>dx12\resource</Filter>
     </ClCompile>
+    <ClCompile Include="camera\frustum.cpp">
+      <Filter>camera</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="def.h" />
@@ -139,6 +142,9 @@
     <ClInclude Include="dx12\resource\constant.h">
       <Filter>dx12\resource</Filter>
     </ClInclude>
+    <ClInclude Include="camera\frustum.h">
+      <Filter>camera</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="entry">
@@ -161,6 +167,9 @@
     </Filter>
     <Filter Include="dx12\resource">
       <UniqueIdentifier>{fb933052-e2ff-486c-ae04-5f15c1d3effb}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="camera">
+      <UniqueIdentifier>{162cbbc5-697d-4217-bb10-a32c15d5d34f}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>

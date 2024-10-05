@@ -160,6 +160,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="camera\frustum.cpp" />
     <ClCompile Include="dx12\command_list.cpp" />
     <ClCompile Include="dx12\command_queue.cpp" />
     <ClCompile Include="dx12\descriptor_heap.cpp" />
@@ -184,6 +185,7 @@
     <ClCompile Include="window\window.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="camera\frustum.h" />
     <ClInclude Include="def.h" />
     <ClInclude Include="dx12\command_list.h" />
     <ClInclude Include="dx12\command_queue.h" />

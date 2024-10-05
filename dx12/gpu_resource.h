@@ -31,6 +31,36 @@ public:
 
     //---------------------------------------------------------------------------------
     /**
+     * @brief	マップする
+     * @param	data		データの先頭アドレス
+     */
+    void map(void** data) noexcept {
+        if (mapping_) {
+            return;
+        }
+        auto res = gpuResource_->Map(0, nullptr, data);
+        if (FAILED(res)) {
+            ASSERT(false, "Map に失敗");
+            return;
+        }
+
+        mapping_ = true;
+    }
+
+    //---------------------------------------------------------------------------------
+    /**
+     * @brief	マップを解除する
+     */
+    void unmap() noexcept {
+        if (!mapping_) {
+            return;
+        }
+        gpuResource_.Get()->Unmap(0, nullptr);
+        mapping_ = false;
+    }
+
+    //---------------------------------------------------------------------------------
+    /**
      * @brief	バッファのストライド
      * @return	ストライドサイズ
      */
@@ -70,6 +100,8 @@ protected:
     Microsoft::WRL::ComPtr<ID3D12Resource> gpuResource_{};  ///< リソース
     uint32_t                               stride_{};       ///< バッファのストライド
     uint32_t                               num_{};          ///< バッファ数
+    bool                                   mapping_{};		///< マップ中か
+
 };
 
 //---------------------------------------------------------------------------------
@@ -103,7 +135,6 @@ protected:
     DescriptorHeap::Handle handle_{};  ///< ディスクリプタハンドル
 };
 
-
 //---------------------------------------------------------------------------------
 /**
  * @brief
@@ -130,6 +161,7 @@ public:
      */
     void create() noexcept {
         resource_->create(reinterpret_cast<void**>(&data_), sizeof(T), NUM);
+        resource_->map(reinterpret_cast<void**>(&data_));
     }
 
     //---------------------------------------------------------------------------------
@@ -148,6 +180,7 @@ public:
      * @param	index			バッファのインデックス
      */
     void setToCommandList(CommandList& commandList, uint32_t index) noexcept {
+        resource_->unmap();
         view_->setToCommandList(commandList, index);
     }
 

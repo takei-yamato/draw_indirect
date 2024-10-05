@@ -20,6 +20,8 @@ bool Fence::create() noexcept {
         return false;
     }
 
+	fence_->Signal(0);
+
     return true;
 }
 

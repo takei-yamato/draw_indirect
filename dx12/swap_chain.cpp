@@ -63,7 +63,7 @@ public:
      * @brief	プレゼンテーション
      */
     void present() noexcept {
-        swapChain_->Present(0, 0);
+        swapChain_->Present(1, 0/*DXGI_PRESENT_ALLOW_TEARING*/);
     }
 
 private:
@@ -77,11 +77,12 @@ private:
         DXGI_SWAP_CHAIN_DESC1 desc = {};
         desc.BufferCount           = frameBufferNum_;
         desc.Width                 = window::width();
-        desc.Height                = window::Height();
+        desc.Height                = window::height();
         desc.Format                = DXGI_FORMAT_R8G8B8A8_UNORM;
         desc.BufferUsage           = DXGI_USAGE_RENDER_TARGET_OUTPUT;
         desc.SwapEffect            = DXGI_SWAP_EFFECT_FLIP_DISCARD;
         desc.SampleDesc.Count      = 1;
+        desc.Flags                 = DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING; // VSync を無視できるように
 
         auto res = Device::instance().dxgiFactory()->CreateSwapChainForHwnd(
             commandQueue.get(),

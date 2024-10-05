@@ -17,18 +17,24 @@
 #include "dx12/resource/mesh.h"
 #include "dx12/resource/frame_buffer.h"
 
+#include "camera/frustum.h"
+
 #include "input/input.h"
 
 #include <array>
 #include <random>
 #include <ppl.h>
+#include <format>
 
 using namespace dx12;
 
 namespace {
 
+// フレームバッファ数
+constexpr uint32_t frameBufferNum = 2;
+
 // インスタンス数（同一の物を一度に描画する数）
-constexpr uint32_t instanceNum = 4;
+constexpr uint32_t instanceNum = 100000;
 
 // シーンコンスタントバッファのフォーマット
 struct ConstantBufferFormat {
@@ -41,9 +47,6 @@ struct InstanceBufferFormat {
     // オブジェクト用の情報
     DirectX::XMMATRIX world{};
     DirectX::XMFLOAT4 color{};
-
-    // 描画インスタンスのインデックス
-    uint32_t index{};
 };
 
 // 頂点フォーマット
@@ -63,48 +66,51 @@ Vertex vertexData[] = {
 // インデックスデータ
 uint16_t indexData[] = {0, 1, 2, 2, 1, 3};
 
-// カメラ
-DirectX::XMFLOAT3 eye(0.0f, 0.0f, -20.0f);
-DirectX::XMFLOAT3 dir(0.0f, 0.0f, 1.0f);
-DirectX::XMFLOAT3 up(0.0f, 1.0f, 0.0f);
-DirectX::XMMATRIX view{};
-DirectX::XMMATRIX proj{};
-
-// アスペクト比
-float aspect = static_cast<float>(window::width()) / static_cast<float>(window::Height());
-
-// 各オブジェクトのワールド行列
-DirectX::XMMATRIX world[instanceNum]{};
-// 各オブジェクトのカラー
-DirectX::XMFLOAT4 color[instanceNum]{};
-
-// フレームバッファ(二つ分)
-resource::FrameBuffer frameBuffer(2);
+// フレームバッファ
+resource::FrameBuffer frameBuffer(frameBufferNum);
 
 // ディスクリプタヒープ
 DescriptorHeap descriptorHeap{};
-
 // メッシュ
 resource::Mesh mesh{};
-
 // シーンコンスタントバッファ
 resource::ConstantBufferObj<ConstantBufferFormat> sceneConstantBuffer{};
 // インスタンス情報バッファ
 resource::ShaderResourceObj<InstanceBufferFormat, instanceNum> instanceBuffer{};
+// インスタンスインデックスバッファ
+resource::ShaderResourceObj<int, instanceNum> instanceIndexBuffer{};
 
 // パイプラインステートオブジェクト
 graphics::GraphicsPipelineStateObject pso{};
 
-// コマンドキュー
-CommandQueue commandQueue{};
-
 // フェンス
 Fence fence{};
+// フェンス値
+uint64_t fenceValue{};
+// イベントハンドル
+HANDLE waitGpuEvent{};
 
 // コマンドリスト
 CommandList commandListBegin{};
 CommandList commandListDraw{};
 CommandList commandListEnd{};
+
+// コマンドキュー
+CommandQueue commandQueue{};
+
+// カメラ
+DirectX::XMFLOAT3 eye(0.0f, 0.0f, -30.0f);
+DirectX::XMFLOAT3 dir(0.0f, 0.0f, 1.0f);
+DirectX::XMFLOAT3 up(0.0f, 1.0f, 0.0f);
+float             aspect   = static_cast<float>(window::width()) / static_cast<float>(window::height());
+DirectX::XMMATRIX view     = DirectX::XMMatrixLookToLH(XMLoadFloat3(&eye), XMLoadFloat3(&dir), XMLoadFloat3(&up));
+DirectX::XMMATRIX proj     = DirectX::XMMatrixPerspectiveFovLH(3.14159f / 4.f, aspect, 0.1f, 1000.0f);
+DirectX::XMMATRIX viewProj = view * proj;
+camera::Frustum   frustum  = camera::createFrustumFromViewProjection(viewProj);
+
+// インスタンス位置
+DirectX::XMFLOAT3 position[instanceNum]{};
+
 }  // namespace
 
 namespace {
@@ -118,75 +124,68 @@ bool appUpdate() noexcept {
     }
 
     {
-        TIME_CHECK_SCORP("更新時間");
-
-        // 描画開始
+        TIME_CHECK_SCORP("フレーム");
         {
+            TIME_CHECK_SCORP("更新");
+            // 視錐台カリング
+            auto drawCount = 0;
+            for (auto i = 0; i < instanceNum; ++i) {
+                if (camera::isPositionInFrustum(frustum, position[i])) {
+                    instanceIndexBuffer[drawCount++] = i;
+                }
+            }
+
+            // 描画開始
             commandListBegin.reset();
             frameBuffer.startRendering(commandListBegin);
             commandListBegin.get()->Close();
-        }
 
-        // 各メッシュ描画
-        {
+            // 各メッシュ描画
             commandListDraw.reset();
-
             frameBuffer.setToRenderTarget(commandListDraw);
             descriptorHeap.setToCommandList(commandListDraw);
             pso.setToCommandList(commandListDraw);
             mesh.setToCommandList(commandListDraw);
             sceneConstantBuffer.setToCommandList(commandListDraw, 0);
             instanceBuffer.setToCommandList(commandListDraw, 1);
-
             // インスタンス描画
-            commandListDraw.get()->DrawIndexedInstanced(6, instanceNum, 0, 0, 0);
-
+            commandListDraw.get()->DrawIndexedInstanced(6, drawCount, 0, 0, 0);
             commandListDraw.get()->Close();
-        }
 
-        // 描画終了
-        {
+            // 描画終了
             commandListEnd.reset();
             frameBuffer.finishRendering(commandListEnd);
             commandListEnd.get()->Close();
-        }
 
-        // コマンドリスト実行
-        {
+            // コマンドリスト実行
             std::array<ID3D12CommandList*, 3> lists;
 
-            // 描画開始コマンドリスト
+            // コマンドリスト
             lists[0] = commandListBegin.get();
-            // 各メッシュ描画コマンドリスト
             lists[1] = commandListDraw.get();
-            // 描画終了コマンドリスト
             lists[2] = commandListEnd.get();
 
             // コマンドリスト実行
             commandQueue.get()->ExecuteCommandLists(lists.size(), static_cast<ID3D12CommandList**>(lists.data()));
-            SwapChain::instance().present();
+        }
 
+        {
+            SwapChain::instance().present();
             // フレームバッファのインデックスを更新する
             frameBuffer.updateBufferIndex(SwapChain::instance().currentBufferIndex());
+
+            // GPU と CPU の同期
+            fenceValue++;
+            commandQueue.get()->Signal(fence.get(), fenceValue);
+            if (fence.get()->GetCompletedValue() < fenceValue) {
+                fence.get()->SetEventOnCompletion(fenceValue, waitGpuEvent);
+                WaitForSingleObject(waitGpuEvent, INFINITE);
+            }
         }
     }
 
     // 時間表示
     TIME_PRINT("");
-
-    // フェンス設定
-    {
-        fence.get()->Signal(0);
-        commandQueue.get()->Signal(fence.get(), 1);
-    }
-
-    // GPU処理が全て終了するまでCPUを待たせる
-    {
-        auto event = CreateEvent(nullptr, false, false, "WAIT_GPU");
-        fence.get()->SetEventOnCompletion(1, event);
-        WaitForSingleObject(event, INFINITE);
-        CloseHandle(event);
-    }
 
     return true;
 }
@@ -199,8 +198,7 @@ bool appUpdate() noexcept {
 INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, INT) {
     std::random_device                    rd;
     std::default_random_engine            re(rd());
-    std::uniform_real_distribution<float> distr(-5.0f, 5.0f);
-
+    std::uniform_real_distribution<float> distr(0, 1);
     {
         // メモリリークチェック
         _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
@@ -231,33 +229,35 @@ INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, INT) {
             view = DirectX::XMMatrixLookToLH(XMLoadFloat3(&eye), XMLoadFloat3(&dir), XMLoadFloat3(&up));
             // プロジェクション行列
             proj = DirectX::XMMatrixPerspectiveFovLH(3.14159f / 4.f, aspect, 0.1f, 1000.0f);
-            // ワールド行列
-            world[0] = DirectX::XMMatrixTranslation(-3.0f, 0, 0);
-            world[1] = DirectX::XMMatrixTranslation(-1.0f, 0, 0);
-            world[2] = DirectX::XMMatrixTranslation(1.0f, 0, 0);
-            world[3] = DirectX::XMMatrixTranslation(3.0f, 0, 0);
-            // カラー
-            color[0] = DirectX::XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
-            color[1] = DirectX::XMFLOAT4(0, 1.0f, 0, 1.0f);
-            color[2] = DirectX::XMFLOAT4(1.0f, 0, 0, 1.0f);
-            color[3] = DirectX::XMFLOAT4(0, 0, 1.0f, 1.0f);
 
             // シーンコンスタントバッファの内容を設定する
             sceneConstantBuffer.create();
             sceneConstantBuffer.createView(descriptorHeap);
-            sceneConstantBuffer[0].viewProj = DirectX::XMMatrixTranspose(view * proj);
+            sceneConstantBuffer[0].viewProj = DirectX::XMMatrixTranspose(viewProj);
 
             // 描画インスタンス毎の内容を設定する
             instanceBuffer.create();
+            // 描画インスタンスインデックスを設定する
+            instanceIndexBuffer.create();
+
+            // RootSignature 生成で この二つ（t0,t1）を一つの DESCRIPTOR_RANGE に纏めた為、descriptorHeap を連続で確保する
             instanceBuffer.createView(descriptorHeap);
+            instanceIndexBuffer.createView(descriptorHeap);
+
+            // 描画インスタンスの情報を初期化する
             for (auto i = 0; i < instanceNum; ++i) {
-                instanceBuffer[i].world = DirectX::XMMatrixTranspose(world[i]);
-                instanceBuffer[i].color = color[i];
-                instanceBuffer[i].index = i;
+                auto rad    = distr(re) * 3.14f * 2.f;
+                auto r      = distr(re) * 100.0f;
+                position[i] = DirectX::XMFLOAT3(cosf(rad) * r, sinf(rad) * r, 0);
+
+                instanceBuffer[i].world = DirectX::XMMatrixTranspose(DirectX::XMMatrixTranslation(position[i].x, position[i].y, 0));
+                instanceBuffer[i].color = DirectX::XMFLOAT4(distr(re), distr(re), distr(re), 1.0f);
+                instanceIndexBuffer[i]  = i;
             }
 
             // フェンス（CPUとGPUの同期オブジェクト）を作成する
             fence.create();
+            waitGpuEvent = CreateEvent(nullptr, false, false, "WAIT_GPU");
 
             // 各コマンドリストを作成する
             commandListBegin.create();
@@ -270,6 +270,13 @@ INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, INT) {
             // アプリケーションループ
             while (appUpdate()) {
             }
+
+            // 終了前のGPU待ち
+            fenceValue++;
+            commandQueue.get()->Signal(fence.get(), fenceValue);
+            fence.get()->SetEventOnCompletion(fenceValue, waitGpuEvent);
+            WaitForSingleObject(waitGpuEvent, INFINITE);
+            CloseHandle(waitGpuEvent);
         }
     }
 
