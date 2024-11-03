@@ -22,6 +22,13 @@ public:
      */
     virtual ~ComputePipelineStateObject() = default;
 
+	//---------------------------------------------------------------------------------
+    /**
+     * @brief	コマンドリストに設定する
+     * @param	commandList		設定先のコマンドリスト
+     */
+    void setToCommandList(CommandList& commandList) noexcept override;
+
 protected:
     //---------------------------------------------------------------------------------
     /**

@@ -80,17 +80,4 @@ void ShaderResourceView::createView(DescriptorHeap& descriptorHeap, ResourceBase
     dx12::Device::instance().device()->CreateShaderResourceView(resourceBase->resource(), &srvDesc, handle);
 }
 
-//---------------------------------------------------------------------------------
-/**
- * @brief	コマンドリストに設定する
- * @param	commandList		設定先のコマンドリスト
- * @param	index			バッファのインデックス
- */
-void ShaderResourceView::setToCommandList(dx12::CommandList& commandList, uint32_t index) noexcept {
-    // バッファビューの設定
-    auto handle = handle_.gpuHandle_;
-    commandList.get()->SetGraphicsRootDescriptorTable(index, handle);
-}
-
-
 }  // namespace dx12::resource

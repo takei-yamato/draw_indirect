@@ -6,6 +6,19 @@ namespace dx12::graphics {
 
 //---------------------------------------------------------------------------------
 /**
+ * @brief	コマンドリストに設定する
+ * @param	commandList		設定先のコマンドリスト
+ */
+void GraphicsPipelineStateObject::setToCommandList(CommandList& commandList) noexcept {
+    // パイプラインを設定
+    commandList.get()->SetPipelineState(pipelineState_.Get());
+
+    // ルートシグネチャをセット
+    commandList.get()->SetGraphicsRootSignature(rootSignature_.Get());
+}
+
+//---------------------------------------------------------------------------------
+/**
  * @brief	パイプラインステートを作成する
  * @return	作成に成功した場合は true
  */
@@ -92,7 +105,7 @@ bool GraphicsPipelineStateObject::createRootSignature() noexcept {
     b.RegisterSpace                     = 0;
     b.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 
-	// 構造化バッファ(t0, t1)を1つの DescriptorRange にまとめる
+    // 構造化バッファ(t0, t1)を1つの DescriptorRange にまとめる
     D3D12_DESCRIPTOR_RANGE t            = {};
     t.RangeType                         = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
     t.NumDescriptors                    = 2;  // t0とt1を含む
@@ -117,10 +130,10 @@ bool GraphicsPipelineStateObject::createRootSignature() noexcept {
     sampler.ShaderVisibility          = D3D12_SHADER_VISIBILITY_ALL;
 
     // ルートパラメータ
-    constexpr auto       paramNum                         = 2;
-    D3D12_ROOT_PARAMETER rootParameters[paramNum]         = {};
+    constexpr auto       paramNum                 = 2;
+    D3D12_ROOT_PARAMETER rootParameters[paramNum] = {};
 
-	rootParameters[0].ParameterType                       = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+    rootParameters[0].ParameterType                       = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
     rootParameters[0].ShaderVisibility                    = D3D12_SHADER_VISIBILITY_VERTEX;
     rootParameters[0].DescriptorTable.NumDescriptorRanges = 1;
     rootParameters[0].DescriptorTable.pDescriptorRanges   = &b;

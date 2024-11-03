@@ -10,9 +10,11 @@
 #include "dx12/swap_chain.h"
 #include "dx12/fence.h"
 #include "dx12/resource/shader_resource.h"
+#include "dx12/resource/unordered_access.h"
 #include "dx12/resource/constant.h"
 
 #include "dx12/graphics/graphics_pipeline_state_object.h"
+#include "dx12/graphics/compute_pipeline_state_object.h"
 
 #include "dx12/resource/mesh.h"
 #include "dx12/resource/frame_buffer.h"
@@ -34,7 +36,7 @@ namespace {
 constexpr uint32_t frameBufferNum = 2;
 
 // インスタンス数（同一の物を一度に描画する数）
-constexpr uint32_t instanceNum = 100000;
+constexpr uint32_t instanceNum = 8 * 8 * 8 * 8 * 8;
 
 // シーンコンスタントバッファのフォーマット
 struct ConstantBufferFormat {
@@ -80,11 +82,18 @@ resource::ShaderResourceObj<InstanceBufferFormat, instanceNum> instanceBuffer{};
 // インスタンスインデックスバッファ
 resource::ShaderResourceObj<int, instanceNum> instanceIndexBuffer{};
 
+// フラスタムコンスタントバッファ
+resource::ConstantBufferObj<camera::Frustum> frustumConstantBuffer{};
+// インスタンスインデックスバッファ(コンピュート処理の書き込み先)
+resource::UnorderedAccessObj<int, instanceNum> instanceIndex{};
+
 // パイプラインステートオブジェクト
-graphics::GraphicsPipelineStateObject pso{};
+graphics::GraphicsPipelineStateObject graphicsPso{};
+graphics::ComputePipelineStateObject  computePso{};
 
 // フェンス
 Fence fence{};
+Fence computeFence{};
 // フェンス値
 uint64_t fenceValue{};
 // イベントハンドル
@@ -94,12 +103,14 @@ HANDLE waitGpuEvent{};
 CommandList commandListBegin{};
 CommandList commandListDraw{};
 CommandList commandListEnd{};
+CommandList commandListCompute{};
 
 // コマンドキュー
 CommandQueue commandQueue{};
+CommandQueue commandQueueCompute{};
 
 // カメラ
-DirectX::XMFLOAT3 eye(0.0f, 0.0f, -30.0f);
+DirectX::XMFLOAT3 eye(0.0f, 0.0f, -20.0f);
 DirectX::XMFLOAT3 dir(0.0f, 0.0f, 1.0f);
 DirectX::XMFLOAT3 up(0.0f, 1.0f, 0.0f);
 float             aspect   = static_cast<float>(window::width()) / static_cast<float>(window::height());
@@ -112,6 +123,9 @@ camera::Frustum   frustum  = camera::createFrustumFromViewProjection(viewProj);
 DirectX::XMFLOAT3 position[instanceNum]{};
 
 }  // namespace
+
+// GPU カリングを利用するか
+constexpr bool useGpuCulling = true;
 
 namespace {
 //---------------------------------------------------------------------------------
@@ -127,46 +141,82 @@ bool appUpdate() noexcept {
         TIME_CHECK_SCORP("フレーム");
         {
             TIME_CHECK_SCORP("更新");
-            // 視錐台カリング
+
+            // 描画するインスタンス数
             auto drawCount = 0;
-            for (auto i = 0; i < instanceNum; ++i) {
-                if (camera::isPositionInFrustum(frustum, position[i])) {
-                    instanceIndexBuffer[drawCount++] = i;
+
+            if constexpr (useGpuCulling) {
+                // コンピュート処理による視錐台カリング
+
+                // コンピュートコマンド作成
+                commandListCompute.reset();
+                computePso.setToCommandList(commandListCompute);
+                descriptorHeap.setToCommandList(commandListCompute);
+
+                sceneConstantBuffer.setToCommandList(commandListCompute, 0);
+                frustumConstantBuffer.setToCommandList(commandListCompute, 1);
+                instanceBuffer.setToCommandList(commandListCompute, 2);
+                instanceIndex.setToCommandList(commandListCompute, 3);
+
+                commandListCompute.get()->Dispatch(8, 8, 8);
+                commandListCompute.get()->Close();
+
+                // コマンドリスト実行
+                std::array<ID3D12CommandList*, 1> lists{commandListCompute.get()};
+                commandQueueCompute.get()->ExecuteCommandLists(lists.size(), static_cast<ID3D12CommandList**>(lists.data()));
+
+                // コンピュート処理が終わるまで描画処理に進ませない（GPU の同期）
+                commandQueueCompute.get()->Signal(computeFence.get(), fenceValue);
+                commandQueue.get()->Wait(computeFence.get(), fenceValue);
+
+                // コンピュートシェーダの計算結果をインスタンスインデックスバッファにコピーする
+                for (auto i = 0; i < instanceNum; ++i) {
+                    if (instanceIndex[i]) {
+                        instanceIndexBuffer[drawCount++] = i;
+                    }
+                }
+            } else {
+                // CPU による視錐台カリング
+                for (auto i = 0; i < instanceNum; ++i) {
+                    if (camera::isPositionInFrustum(frustum, position[i])) {
+                        instanceIndexBuffer[drawCount++] = i;
+                    }
                 }
             }
 
-            // 描画開始
-            commandListBegin.reset();
-            frameBuffer.startRendering(commandListBegin);
-            commandListBegin.get()->Close();
+            // 描画処理
+            {
+                // 描画開始
+                commandListBegin.reset();
+                frameBuffer.startRendering(commandListBegin);
+                commandListBegin.get()->Close();
 
-            // 各メッシュ描画
-            commandListDraw.reset();
-            frameBuffer.setToRenderTarget(commandListDraw);
-            descriptorHeap.setToCommandList(commandListDraw);
-            pso.setToCommandList(commandListDraw);
-            mesh.setToCommandList(commandListDraw);
-            sceneConstantBuffer.setToCommandList(commandListDraw, 0);
-            instanceBuffer.setToCommandList(commandListDraw, 1);
-            // インスタンス描画
-            commandListDraw.get()->DrawIndexedInstanced(6, drawCount, 0, 0, 0);
-            commandListDraw.get()->Close();
+                // 各メッシュ描画
+                commandListDraw.reset();
+                frameBuffer.setToRenderTarget(commandListDraw);
+                descriptorHeap.setToCommandList(commandListDraw);
+                graphicsPso.setToCommandList(commandListDraw);
+                mesh.setToCommandList(commandListDraw);
 
-            // 描画終了
-            commandListEnd.reset();
-            frameBuffer.finishRendering(commandListEnd);
-            commandListEnd.get()->Close();
+                sceneConstantBuffer.setToCommandList(commandListDraw, 0);
+                instanceBuffer.setToCommandList(commandListDraw, 1);
 
-            // コマンドリスト実行
-            std::array<ID3D12CommandList*, 3> lists;
+                // インスタンス描画
+                commandListDraw.get()->DrawIndexedInstanced(6, drawCount, 0, 0, 0);
+                commandListDraw.get()->Close();
 
-            // コマンドリスト
-            lists[0] = commandListBegin.get();
-            lists[1] = commandListDraw.get();
-            lists[2] = commandListEnd.get();
+                // 描画終了
+                commandListEnd.reset();
+                frameBuffer.finishRendering(commandListEnd);
+                commandListEnd.get()->Close();
 
-            // コマンドリスト実行
-            commandQueue.get()->ExecuteCommandLists(lists.size(), static_cast<ID3D12CommandList**>(lists.data()));
+                // コマンドリスト実行
+                std::array<ID3D12CommandList*, 3> lists;
+                lists[0] = commandListBegin.get();
+                lists[1] = commandListDraw.get();
+                lists[2] = commandListEnd.get();
+                commandQueue.get()->ExecuteCommandLists(lists.size(), static_cast<ID3D12CommandList**>(lists.data()));
+            }
         }
 
         {
@@ -216,7 +266,8 @@ INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, INT) {
             descriptorHeap.create(DescriptorHeap::Type::CBV_SRV_UAV, 10);
 
             // コマンドキューを作成する
-            commandQueue.create(dx12::CommandQueue::Type::Graphics);
+            commandQueue.create(dx12::CommandType::Graphics);
+            commandQueueCompute.create(dx12::CommandType::Compute);
 
             // スワップチェインを作成する
             SwapChain::instance().create(commandQueue, frameBuffer);
@@ -237,35 +288,44 @@ INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, INT) {
 
             // 描画インスタンス毎の内容を設定する
             instanceBuffer.create();
-            // 描画インスタンスインデックスを設定する
             instanceIndexBuffer.create();
-
-            // RootSignature 生成で この二つ（t0,t1）を一つの DESCRIPTOR_RANGE に纏めた為、descriptorHeap を連続で確保する
+            // Graphics RootSignature 生成で この二つ（t0,t1）を一つの DESCRIPTOR_RANGE に纏めた為、descriptorHeap を連続で確保する
             instanceBuffer.createView(descriptorHeap);
             instanceIndexBuffer.createView(descriptorHeap);
 
             // 描画インスタンスの情報を初期化する
             for (auto i = 0; i < instanceNum; ++i) {
-                auto rad    = distr(re) * 3.14f * 2.f;
-                auto r      = distr(re) * 100.0f;
-                position[i] = DirectX::XMFLOAT3(cosf(rad) * r, sinf(rad) * r, 0);
-
+                auto rad                = distr(re) * 3.14f * 2.f;
+                auto r                  = distr(re) * 100.0f;
+                position[i]             = DirectX::XMFLOAT3(cosf(rad) * r, sinf(rad) * r, 0);
                 instanceBuffer[i].world = DirectX::XMMatrixTranspose(DirectX::XMMatrixTranslation(position[i].x, position[i].y, 0));
                 instanceBuffer[i].color = DirectX::XMFLOAT4(distr(re), distr(re), distr(re), 1.0f);
                 instanceIndexBuffer[i]  = i;
             }
 
+            // フラスタム
+            frustumConstantBuffer.create();
+            frustumConstantBuffer.createView(descriptorHeap);
+            frustumConstantBuffer[0] = frustum;
+
+            // コンピュート処理の結果バッファを生成する
+            instanceIndex.create();
+            instanceIndex.createView(descriptorHeap);
+
             // フェンス（CPUとGPUの同期オブジェクト）を作成する
+            computeFence.create();
             fence.create();
             waitGpuEvent = CreateEvent(nullptr, false, false, "WAIT_GPU");
 
             // 各コマンドリストを作成する
-            commandListBegin.create();
-            commandListDraw.create();
-            commandListEnd.create();
+            commandListBegin.create(CommandType::Graphics);
+            commandListDraw.create(CommandType::Graphics);
+            commandListEnd.create(CommandType::Graphics);
+            commandListCompute.create(CommandType::Compute);
 
             // パイプラインステートオブジェクトを作成する
-            pso.create();
+            graphicsPso.create();
+            computePso.create();
 
             // アプリケーションループ
             while (appUpdate()) {

@@ -27,18 +27,6 @@ public:
 public:
     //---------------------------------------------------------------------------------
     /**
-     * @brief	登録情報
-     */
-    struct Handle {
-        uint32_t                    index_{};
-        D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle_{};
-        D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle_{};
-        uint32_t                    incrementSize_{};
-    };
-
-public:
-    //---------------------------------------------------------------------------------
-    /**
      * @brief	コンストラクタ
      */
     DescriptorHeap() = default;
@@ -64,7 +52,7 @@ public:
      * @param	num			確保数
      * @return	CPU と GPU のディスクリプタハンドル
      */
-    [[nodiscard]] Handle allocate(uint32_t num) noexcept;
+    [[nodiscard]] DescriptorHandle allocate(uint32_t num) noexcept;
 
     //---------------------------------------------------------------------------------
     /**
@@ -72,7 +60,7 @@ public:
      * @param	index		インデックス
      * @return	CPU と GPU のディスクリプタハンドル
      */
-    [[nodiscard]] Handle handleFromIndex(uint32_t index) noexcept;
+    [[nodiscard]] DescriptorHandle handleFromIndex(uint32_t index) noexcept;
 
     //---------------------------------------------------------------------------------
     /**

@@ -189,6 +189,7 @@
     <ClInclude Include="def.h" />
     <ClInclude Include="dx12\command_list.h" />
     <ClInclude Include="dx12\command_queue.h" />
+    <ClInclude Include="dx12\descriptor_handle.h" />
     <ClInclude Include="dx12\descriptor_heap.h" />
     <ClInclude Include="dx12\device.h" />
     <ClInclude Include="dx12\fence.h" />

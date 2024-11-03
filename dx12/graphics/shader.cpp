@@ -12,7 +12,9 @@ namespace dx12::graphics {
  * @param	filePath	ファイルパス( 「asset/」から開始の相対パス )
  */
 Shader::Shader(std::string_view filePath) {
-    create(filePath);
+    if (!create(filePath)) {
+        ASSERT(false, "シェーダーの生成に失敗しました");
+	}
 }
 
 //---------------------------------------------------------------------------------
@@ -21,6 +23,7 @@ Shader::Shader(std::string_view filePath) {
  * @return	頂点シェーダのデータ
  */
 ID3DBlob* Shader::vertexShader() const noexcept {
+    ASSERT(vertexShader_, "シェーダーがありません");
     return vertexShader_.Get();
 }
 
@@ -30,6 +33,7 @@ ID3DBlob* Shader::vertexShader() const noexcept {
  * @return	ピクセルシェーダのデータ
  */
 ID3DBlob* Shader::pixelShader() const noexcept {
+    ASSERT(pixelShader_, "シェーダーがありません");
     return pixelShader_.Get();
 }
 
@@ -39,6 +43,7 @@ ID3DBlob* Shader::pixelShader() const noexcept {
  * @return	コンピュートシェーダのデータ
  */
 ID3DBlob* Shader::computeShader() const noexcept {
+    ASSERT(computeShader_, "シェーダーがありません");
     return computeShader_.Get();
 }
 
@@ -52,46 +57,34 @@ bool Shader::create(std::string_view filePath) noexcept {
     // シェーダ作成
     Microsoft::WRL::ComPtr<ID3DBlob> error;
 
+    auto r    = false;
     auto temp = std::wstring(filePath.begin(), filePath.end());
 
     auto res = D3DCompileFromFile(temp.data(), nullptr, nullptr, "vs", "vs_5_0", D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION, 0, vertexShader_.GetAddressOf(), error.GetAddressOf());
     if (FAILED(res)) {
         char* p = static_cast<char*>(error->GetBufferPointer());
-        ASSERT(false, p);
-        return false;
+        TRACE(p);
+    } else {
+        r = true;
     }
 
     res = D3DCompileFromFile(temp.data(), nullptr, nullptr, "ps", "ps_5_0", D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION, 0, pixelShader_.GetAddressOf(), error.GetAddressOf());
     if (FAILED(res)) {
         char* p = static_cast<char*>(error->GetBufferPointer());
-        ASSERT(false, p);
-        return false;
+        TRACE(p);
+    } else {
+        r = true;
     }
 
-    return true;
-}
-
-//---------------------------------------------------------------------------------
-/**
- * @brief	コンピュートシェーダを作成する
- * @param	filePath	ファイルパス
- * @return	作成に成功した場合は true
- */
-bool Shader::createCompute(std::string_view filePath) noexcept {
-    // シェーダ作成
-    Microsoft::WRL::ComPtr<ID3DBlob> error;
-
-    auto temp = std::wstring(filePath.begin(), filePath.end());
-
-    auto res = D3DCompileFromFile(temp.data(), nullptr, nullptr, "CS", "cs_5_0", D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION, 0, computeShader_.GetAddressOf(), error.GetAddressOf());
+    res = D3DCompileFromFile(temp.data(), nullptr, nullptr, "cs", "cs_5_0", D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION, 0, computeShader_.GetAddressOf(), error.GetAddressOf());
     if (FAILED(res)) {
         char* p = static_cast<char*>(error->GetBufferPointer());
-        ASSERT(false, p);
-        return false;
+        TRACE(p);
+    } else {
+        r = true;
     }
 
-    return true;
+    return r;
 }
-
 
 }  // namespace dx12::graphics

@@ -13,12 +13,16 @@ CommandList::~CommandList() {
 //---------------------------------------------------------------------------------
 /**
  * @brief	コマンドリストを作成する
+ * @param	type コマンドリストが扱う種類
  * @return	作成に成功した場合は true
  */
-bool CommandList::create() noexcept {
+bool CommandList::create(CommandType type) noexcept {
+    type_  = type;
+    auto t = type == CommandType::Compute ? D3D12_COMMAND_LIST_TYPE_COMPUTE : D3D12_COMMAND_LIST_TYPE_DIRECT;
+
     // アロケータ作成
     auto res = Device::instance().device()->CreateCommandAllocator(
-        D3D12_COMMAND_LIST_TYPE_DIRECT,
+        t,
         IID_PPV_ARGS(commandAllocator_.GetAddressOf()));
     if (FAILED(res)) {
         ASSERT(false, "コマンドアロケータ作成に失敗");
@@ -28,7 +32,7 @@ bool CommandList::create() noexcept {
     // コマンドリスト作成
     res = Device::instance().device()->CreateCommandList(
         0,
-        D3D12_COMMAND_LIST_TYPE_DIRECT,
+        t,
         commandAllocator_.Get(), nullptr, IID_PPV_ARGS(commandList_.GetAddressOf()));
     if (FAILED(res)) {
         ASSERT(false, "コマンドリスト作成に失敗");
@@ -44,39 +48,6 @@ bool CommandList::create() noexcept {
 
 //---------------------------------------------------------------------------------
 /**
- * @brief	コマンドリストを作成する
- * @return	作成に成功した場合は true
- */
-bool CommandList::createCompute() noexcept {
-    // アロケータ作成
-    auto res = Device::instance().device()->CreateCommandAllocator(
-        D3D12_COMMAND_LIST_TYPE_COMPUTE,
-        IID_PPV_ARGS(commandAllocator_.GetAddressOf()));
-    if (FAILED(res)) {
-        ASSERT(false, "コマンドアロケータ作成に失敗");
-        return false;
-    }
-
-    // コマンドリスト作成
-    res = Device::instance().device()->CreateCommandList(
-        0,
-        D3D12_COMMAND_LIST_TYPE_COMPUTE,
-        commandAllocator_.Get(), nullptr, IID_PPV_ARGS(commandList_.GetAddressOf()));
-    if (FAILED(res)) {
-        ASSERT(false, "コマンドリスト作成に失敗");
-        return false;
-    }
-
-    commandList_->SetName(L"ComputeCommandAlloc");
-
-    commandList_->Close();
-
-    return true;
-}
-
-
-//---------------------------------------------------------------------------------
-/**
  * @brief	コマンドリストをリセットする
  */
 void CommandList::reset() noexcept {
@@ -85,6 +56,20 @@ void CommandList::reset() noexcept {
 
     // コマンドリセット
     commandList_->Reset(commandAllocator_.Get(), nullptr);
+}
+
+//---------------------------------------------------------------------------------
+/**
+ * @brief	ルートパラメータを設定する
+ * @param	handle ディスクリプタハンドル
+ * @return
+ */
+void CommandList::setRootParameters(uint32_t index, const DescriptorHandle& handle) noexcept {
+    if (type_ == CommandType::Compute) {
+        get()->SetComputeRootDescriptorTable(index, handle.gpuHandle_);
+    } else {
+        get()->SetGraphicsRootDescriptorTable(index, handle.gpuHandle_);
+    }
 }
 
 //---------------------------------------------------------------------------------

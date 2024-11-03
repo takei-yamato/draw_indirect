@@ -11,7 +11,6 @@ namespace {
 
 namespace dx12::resource {
 
-
 //---------------------------------------------------------------------------------
 /**
  * @brief	UAバッファを生成する
@@ -78,21 +77,5 @@ void UnorderedAccessView::createView(DescriptorHeap& descriptorHeap, ResourceBas
     auto handle = handle_.cpuHandle_;
     dx12::Device::instance().device()->CreateUnorderedAccessView(resourceBase->resource(), nullptr, &uavDesc, handle);
 }
-
-//---------------------------------------------------------------------------------
-/**
- * @brief	コマンドリストに設定する
- * @param	commandList		設定先のコマンドリスト
- * @param	index			バッファのインデックス
- */
-void UnorderedAccessView::setToCommandList(dx12::CommandList& commandList, uint32_t index) noexcept {
-    // バッファビューの設定
-    auto handle = handle_.gpuHandle_;
-    commandList.get()->SetComputeRootDescriptorTable(index, handle);
-}
-
-
-
-
 
 }  // namespace dx12::resource

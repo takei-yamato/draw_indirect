@@ -56,18 +56,9 @@ private:
      */
     bool create(std::string_view filePath) noexcept;
 
-    //---------------------------------------------------------------------------------
-    /**
-     * @brief	コンピュートシェーダを作成する
-     * @param	filePath	ファイルパス
-     * @return	作成に成功した場合は true
-     */
-    bool createCompute(std::string_view filePath) noexcept;
-
-
 private:
-    Microsoft::WRL::ComPtr<ID3DBlob> vertexShader_;
-    Microsoft::WRL::ComPtr<ID3DBlob> pixelShader_;
-    Microsoft::WRL::ComPtr<ID3DBlob> computeShader_;
+    Microsoft::WRL::ComPtr<ID3DBlob> vertexShader_{};
+    Microsoft::WRL::ComPtr<ID3DBlob> pixelShader_{};
+    Microsoft::WRL::ComPtr<ID3DBlob> computeShader_{};
 };
 }  // namespace dx12::graphics

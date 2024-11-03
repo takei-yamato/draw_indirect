@@ -7,7 +7,7 @@ namespace camera {
 // 平面
 struct Plane {
     DirectX::XMVECTOR normal;  // 平面の法線ベクトル
-    float             d;       // 原点からの距離
+    DirectX::XMVECTOR d;       // 原点からの距離
 };
 
 // 視錐台

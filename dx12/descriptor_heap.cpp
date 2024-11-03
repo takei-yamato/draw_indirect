@@ -40,7 +40,7 @@ bool DescriptorHeap::create(Type type, uint32_t capacity) noexcept {
  * @param	num			確保数
  * @return	CPU と GPU のディスクリプタハンドル
  */
-DescriptorHeap::Handle DescriptorHeap::allocate(uint32_t num) noexcept {
+DescriptorHandle DescriptorHeap::allocate(uint32_t num) noexcept {
     const auto temp = currentIndex_;
     currentIndex_ += num;
 
@@ -53,7 +53,7 @@ DescriptorHeap::Handle DescriptorHeap::allocate(uint32_t num) noexcept {
  * @param	index		インデックス
  * @return	CPU と GPU のディスクリプタハンドル
  */
-DescriptorHeap::Handle DescriptorHeap::handleFromIndex(uint32_t index) noexcept {
+DescriptorHandle DescriptorHeap::handleFromIndex(uint32_t index) noexcept {
     const auto size = dx12::Device::instance().device()->GetDescriptorHandleIncrementSize(desc_.Type);
 
     auto cpuHandle = heap_->GetCPUDescriptorHandleForHeapStart();

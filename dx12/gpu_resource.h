@@ -129,10 +129,12 @@ public:
      * @param	commandList		設定先のコマンドリスト
      * @param	index			バッファのインデックス
      */
-    virtual void setToCommandList(dx12::CommandList& commandList, uint32_t index) noexcept = 0;
+	void setToCommandList(dx12::CommandList& commandList, uint32_t index) noexcept {
+        commandList.setRootParameters(index, handle_);
+	}
 
 protected:
-    DescriptorHeap::Handle handle_{};  ///< ディスクリプタハンドル
+    DescriptorHandle handle_{};  ///< ディスクリプタハンドル
 };
 
 //---------------------------------------------------------------------------------

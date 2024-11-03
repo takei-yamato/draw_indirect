@@ -40,14 +40,6 @@ public:
      * @param	resourceBase	リソース
      */
     void createView(DescriptorHeap& descriptorHeap, ResourceBase* resourceBase) noexcept override;
-
-    //---------------------------------------------------------------------------------
-    /**
-     * @brief	コマンドリストに設定する
-     * @param	commandList		設定先のコマンドリスト
-     * @param	index			バッファのインデックス
-     */
-    void setToCommandList(dx12::CommandList& commandList, uint32_t index) noexcept override;
 };
 
 //---------------------------------------------------------------------------------

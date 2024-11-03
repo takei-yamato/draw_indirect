@@ -4,6 +4,18 @@
 
 namespace dx12::graphics {
 
+//---------------------------------------------------------------------------------
+/**
+ * @brief	コマンドリストに設定する
+ * @param	commandList		設定先のコマンドリスト
+ */
+void ComputePipelineStateObject::setToCommandList(CommandList& commandList) noexcept {
+    // パイプラインを設定
+    commandList.get()->SetPipelineState(pipelineState_.Get());
+
+    // ルートシグネチャをセット
+    commandList.get()->SetComputeRootSignature(rootSignature_.Get());
+}
 
 //---------------------------------------------------------------------------------
 /**
@@ -11,6 +23,9 @@ namespace dx12::graphics {
  * @return	作成に成功した場合は true
  */
 bool ComputePipelineStateObject::createPipelineState() noexcept {
+    // とりあえずここでシェーダを作成する
+    shader_ = std::make_unique<Shader>("asset/calc.hlsl");
+
     // パイプラインステート
     D3D12_COMPUTE_PIPELINE_STATE_DESC psoDesc = {};
     psoDesc.pRootSignature                    = rootSignature_.Get();
@@ -29,40 +44,62 @@ bool ComputePipelineStateObject::createPipelineState() noexcept {
  * @return	作成に成功した場合は true
  */
 bool ComputePipelineStateObject::createRootSignature() noexcept {
-    // とりあえずここでシェーダを作成する
-    shader_ = std::make_unique<Shader>("asset/calc.hlsl");
+    // コンスタントバッファ( b0 )
+    D3D12_DESCRIPTOR_RANGE b0            = {};
+    b0.RangeType                         = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
+    b0.NumDescriptors                    = 1;
+    b0.BaseShaderRegister                = 0;
+    b0.RegisterSpace                     = 0;
+    b0.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 
-    // シェーダとリソースの紐付け
-    D3D12_DESCRIPTOR_RANGE range1            = {};
-    range1.RangeType                         = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-    range1.NumDescriptors                    = 1;
-    range1.BaseShaderRegister                = 0;
-    range1.RegisterSpace                     = 0;
-    range1.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+    // コンスタントバッファ( b1 )
+    D3D12_DESCRIPTOR_RANGE b1            = {};
+    b1.RangeType                         = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
+    b1.NumDescriptors                    = 1;
+    b1.BaseShaderRegister                = 1;
+    b1.RegisterSpace                     = 0;
+    b1.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 
-    D3D12_DESCRIPTOR_RANGE range2            = {};
-    range2.RangeType                         = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
-    range2.NumDescriptors                    = 1;
-    range2.BaseShaderRegister                = 0;
-    range2.RegisterSpace                     = 0;
-    range2.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+    // 構造化バッファ（t0）
+    D3D12_DESCRIPTOR_RANGE t            = {};
+    t.RangeType                         = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+    t.NumDescriptors                    = 1;
+    t.BaseShaderRegister                = 0; 
+    t.RegisterSpace                     = 0;
+    t.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+
+    // アンオーダードバッファ（u0）
+    D3D12_DESCRIPTOR_RANGE u            = {};
+    u.RangeType                         = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
+    u.NumDescriptors                    = 1;
+    u.BaseShaderRegister                = 0;
+    u.RegisterSpace                     = 0;
+    u.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 
     // ルートパラメータ
-    D3D12_ROOT_PARAMETER rootParameters[2]              = {};
+    constexpr auto       paramNum                 = 4;
+    D3D12_ROOT_PARAMETER rootParameters[paramNum] = {};
+
     rootParameters[0].ParameterType                       = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
     rootParameters[0].ShaderVisibility                    = D3D12_SHADER_VISIBILITY_ALL;
     rootParameters[0].DescriptorTable.NumDescriptorRanges = 1;
-    rootParameters[0].DescriptorTable.pDescriptorRanges   = &range1;
-
+    rootParameters[0].DescriptorTable.pDescriptorRanges   = &b0;
     rootParameters[1].ParameterType                       = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
     rootParameters[1].ShaderVisibility                    = D3D12_SHADER_VISIBILITY_ALL;
     rootParameters[1].DescriptorTable.NumDescriptorRanges = 1;
-    rootParameters[1].DescriptorTable.pDescriptorRanges   = &range2;
-
+    rootParameters[1].DescriptorTable.pDescriptorRanges   = &b1;
+    rootParameters[2].ParameterType                       = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+    rootParameters[2].ShaderVisibility                    = D3D12_SHADER_VISIBILITY_ALL;
+    rootParameters[2].DescriptorTable.NumDescriptorRanges = 1;
+    rootParameters[2].DescriptorTable.pDescriptorRanges   = &t;
+    rootParameters[3].ParameterType                       = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+    rootParameters[3].ShaderVisibility                    = D3D12_SHADER_VISIBILITY_ALL;
+    rootParameters[3].DescriptorTable.NumDescriptorRanges = 1;
+    rootParameters[3].DescriptorTable.pDescriptorRanges   = &u;
 
     // ルートシグネチャ
     D3D12_ROOT_SIGNATURE_DESC rootSignatureDesc = {};
-    rootSignatureDesc.NumParameters             = 2;
+    rootSignatureDesc.NumParameters             = paramNum;
     rootSignatureDesc.pParameters               = rootParameters;
     rootSignatureDesc.NumStaticSamplers         = 0;
     rootSignatureDesc.pStaticSamplers           = {};

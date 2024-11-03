@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 #include "dx12/device.h"
-
+#include "dx12/command_list.h"
 #include "utility/noncopyable.h"
 
 namespace dx12 {
@@ -11,17 +11,6 @@ namespace dx12 {
  * コマンドキュー
  */
 class CommandQueue final : utility::Noncopyable {
-public:
-
-    //---------------------------------------------------------------------------------
-    /**
-     * @brief	コマンドキューの対象種類
-     */
-    enum class Type {
-        Graphics,
-        Compute,
-    };
-
 public:
     //---------------------------------------------------------------------------------
     /**
@@ -41,7 +30,7 @@ public:
      * @param	type		対象の種類
      * @return	正しく生成できた場合は true
      */
-    bool create(Type type) noexcept;
+    bool create(CommandType type) noexcept;
 
     //---------------------------------------------------------------------------------
     /**
