@@ -56,7 +56,7 @@ public:
      */
     ShaderResourceObj() {
         this->resource_.reset(new ShaderResource());
-        this->view_.reset(new ShaderResourceView());
+        this->view_.emplace_back(new ShaderResourceView());
     }
 
     //---------------------------------------------------------------------------------

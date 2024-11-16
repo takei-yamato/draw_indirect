@@ -64,18 +64,14 @@ public:
      * @brief	バッファのストライド
      * @return	ストライドサイズ
      */
-    uint32_t stride() const noexcept {
-        return stride_;
-    }
+    uint32_t stride() const noexcept { return stride_; }
 
     //---------------------------------------------------------------------------------
     /**
      * @brief	バッファ要素数
      * @return	要素数
      */
-    uint32_t num() const noexcept {
-        return num_;
-    }
+    uint32_t num() const noexcept { return num_; }
 
     //---------------------------------------------------------------------------------
     /**
@@ -83,25 +79,27 @@ public:
      * @param	index			バッファのインデックス
      * @return	インデックスに対応するオフセット
      */
-    uint32_t offset(uint32_t index) const noexcept {
-        return index * stride_;
-    }
+    uint32_t offset(uint32_t index) const noexcept { return index * stride_; }
 
     //---------------------------------------------------------------------------------
     /**
      * @brief	リソースを取得する
      * @return	リソース
      */
-    ID3D12Resource* resource() const noexcept {
-        return gpuResource_.Get();
-    }
+    ID3D12Resource* resource() const noexcept { return gpuResource_.Get(); }
+
+    //---------------------------------------------------------------------------------
+    /**
+     * @brief	マップ中か
+     * @return	リソース
+     */
+    bool mapping() const noexcept { return mapping_; }
 
 protected:
     Microsoft::WRL::ComPtr<ID3D12Resource> gpuResource_{};  ///< リソース
     uint32_t                               stride_{};       ///< バッファのストライド
     uint32_t                               num_{};          ///< バッファ数
-    bool                                   mapping_{};		///< マップ中か
-
+    bool                                   mapping_{};      ///< マップ中か
 };
 
 //---------------------------------------------------------------------------------
@@ -127,11 +125,11 @@ public:
     /**
      * @brief	コマンドリストに設定する
      * @param	commandList		設定先のコマンドリスト
-     * @param	index			バッファのインデックス
+     * @param	rootParamIndex	ルートパラメータのインデックス
      */
-	void setToCommandList(dx12::CommandList& commandList, uint32_t index) noexcept {
-        commandList.setRootParameters(index, handle_);
-	}
+    void setToCommandList(dx12::CommandList& commandList, uint32_t rootParamIndex) noexcept {
+        commandList.setRootParameters(rootParamIndex, handle_);
+    }
 
 protected:
     DescriptorHandle handle_{};  ///< ディスクリプタハンドル
@@ -163,27 +161,66 @@ public:
      */
     void create() noexcept {
         resource_->create(reinterpret_cast<void**>(&data_), sizeof(T), NUM);
-        resource_->map(reinterpret_cast<void**>(&data_));
+        map();
     }
 
     //---------------------------------------------------------------------------------
     /**
      * @brief	ビューを生成する
+     * @param	viewIndex		ビューのインデックス
      * @param	descriptorHeap	ビュー（ディスクリプタ）登録先のヒープ
      */
-    void createView(DescriptorHeap& descriptorHeap) noexcept {
-        view_->createView(descriptorHeap, resource_.get());
+    void createView(uint32_t viewIndex, DescriptorHeap& descriptorHeap) noexcept {
+        view_[viewIndex]->createView(descriptorHeap, resource_.get());
     }
 
     //---------------------------------------------------------------------------------
     /**
      * @brief	コマンドリストに設定する
      * @param	commandList		設定先のコマンドリスト
-     * @param	index			バッファのインデックス
+     * @param	viewIndex		ビューのインデックス
+     * @param	rootParamIndex	ルートパラメータのインデックス
      */
-    void setToCommandList(CommandList& commandList, uint32_t index) noexcept {
+    void setToCommandList(CommandList& commandList, uint32_t viewIndex, uint32_t rootParamIndex) noexcept {
+        unmap();
+        view_[viewIndex]->setToCommandList(commandList, rootParamIndex);
+    }
+
+    //---------------------------------------------------------------------------------
+    /**
+     * @brief	リソースバリア
+     * @param	commandList		設定先のコマンドリスト
+     * @param	type			バリアタイプ
+     * @param	before			遷移前の状態
+     * @param	after			遷移後の状態
+     */
+    void resourceBarrier(CommandList& commandList, D3D12_RESOURCE_BARRIER_TYPE type, D3D12_RESOURCE_STATES before = D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATES after = D3D12_RESOURCE_STATE_COMMON) noexcept {
+        D3D12_RESOURCE_BARRIER barrier{};
+        barrier.Type                 = type;
+        barrier.Transition.pResource = resource_->resource();
+
+        if (type == D3D12_RESOURCE_BARRIER_TYPE_TRANSITION) {
+            barrier.Transition.StateBefore = before;
+            barrier.Transition.StateAfter  = after;
+            barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+        }
+        commandList.get()->ResourceBarrier(1, &barrier);
+    }
+
+    //---------------------------------------------------------------------------------
+    /**
+     * @brief	マップする
+     */
+    void map() noexcept {
+        resource_->map(reinterpret_cast<void**>(&data_));
+    }
+
+    //---------------------------------------------------------------------------------
+    /**
+     * @brief	マップを解除する
+     */
+    void unmap() noexcept {
         resource_->unmap();
-        view_->setToCommandList(commandList, index);
     }
 
     //---------------------------------------------------------------------------------
@@ -193,14 +230,15 @@ public:
      * @return	データの参照
      */
     T& operator[](uint32_t index) const noexcept {
+        ASSERT(resource_->mapping(), "CPU からアクセスできません");
         auto* address = reinterpret_cast<char*>(data_) + resource_->offset(index);
         return *(reinterpret_cast<T*>(address));
     }
 
 protected:
-    std::unique_ptr<ResourceBase>     resource_{};  ///< リソース
-    std::unique_ptr<ResourceViewBase> view_{};      ///< ビュー
-    T*                                data_{};      ///< CPUで内容を変更する際のアクセス先アドレス
+    std::unique_ptr<ResourceBase>                  resource_{};  ///< リソース
+    std::vector<std::unique_ptr<ResourceViewBase>> view_{};      ///< ビュー
+    T*                                             data_{};      ///< CPUで内容を変更する際のアクセス先アドレス
 };
 
 }  // namespace dx12

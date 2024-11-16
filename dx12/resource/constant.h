@@ -56,7 +56,7 @@ public:
      */
     ConstantBufferObj() {
         this->resource_.reset(new ConstantBufferResource());
-        this->view_.reset(new ConstantBufferResourceView());
+        this->view_.emplace_back(new ConstantBufferResourceView());
     }
 
     //---------------------------------------------------------------------------------

@@ -61,7 +61,8 @@ void CommandList::reset() noexcept {
 //---------------------------------------------------------------------------------
 /**
  * @brief	ルートパラメータを設定する
- * @param	handle ディスクリプタハンドル
+ * @param	index	ルートパラメータのインデックス
+ * @param	handle	ディスクリプタハンドル
  * @return
  */
 void CommandList::setRootParameters(uint32_t index, const DescriptorHandle& handle) noexcept {

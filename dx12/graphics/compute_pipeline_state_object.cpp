@@ -68,16 +68,33 @@ bool ComputePipelineStateObject::createRootSignature() noexcept {
     t.RegisterSpace                     = 0;
     t.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 
-    // アンオーダードバッファ（u0）
-    D3D12_DESCRIPTOR_RANGE u            = {};
-    u.RangeType                         = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
-    u.NumDescriptors                    = 1;
-    u.BaseShaderRegister                = 0;
-    u.RegisterSpace                     = 0;
-    u.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+    //// アンオーダードバッファ（u0~u1）
+    //D3D12_DESCRIPTOR_RANGE u            = {};
+    //u.RangeType                         = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
+    //u.NumDescriptors                    = 2; // u0とu1を含む
+    //u.BaseShaderRegister                = 0; // u0の開始レジスタ
+    //u.RegisterSpace                     = 0;
+    //u.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+
+    // アンオーダードバッファ（ u0 ）
+    D3D12_DESCRIPTOR_RANGE u0            = {};
+    u0.RangeType                         = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
+    u0.NumDescriptors                    = 1;
+    u0.BaseShaderRegister                = 0;
+    u0.RegisterSpace                     = 0;
+    u0.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+
+    // アンオーダードバッファ（ u1 ）
+    D3D12_DESCRIPTOR_RANGE u1            = {};
+    u1.RangeType                         = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
+    u1.NumDescriptors                    = 1;
+    u1.BaseShaderRegister                = 1;
+    u1.RegisterSpace                     = 0;
+    u1.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+
 
     // ルートパラメータ
-    constexpr auto       paramNum                 = 4;
+    constexpr auto       paramNum                 = 5;
     D3D12_ROOT_PARAMETER rootParameters[paramNum] = {};
 
     rootParameters[0].ParameterType                       = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
@@ -95,7 +112,12 @@ bool ComputePipelineStateObject::createRootSignature() noexcept {
     rootParameters[3].ParameterType                       = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
     rootParameters[3].ShaderVisibility                    = D3D12_SHADER_VISIBILITY_ALL;
     rootParameters[3].DescriptorTable.NumDescriptorRanges = 1;
-    rootParameters[3].DescriptorTable.pDescriptorRanges   = &u;
+    rootParameters[3].DescriptorTable.pDescriptorRanges   = &u0;
+    rootParameters[4].ParameterType                       = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+    rootParameters[4].ShaderVisibility                    = D3D12_SHADER_VISIBILITY_ALL;
+    rootParameters[4].DescriptorTable.NumDescriptorRanges = 1;
+    rootParameters[4].DescriptorTable.pDescriptorRanges   = &u1;
+
 
     // ルートシグネチャ
     D3D12_ROOT_SIGNATURE_DESC rootSignatureDesc = {};

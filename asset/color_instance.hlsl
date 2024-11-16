@@ -1,22 +1,24 @@
 
 // シーンコンスタントバッファ
-cbuffer global : register(b0) {
-    // メッシュ用の情報
+cbuffer sceneData : register(b0)
+{
+    // カメラ情報
     matrix viewProj;
 };
 
 // インスタンス情報
-struct InstanceInfo
+struct InstanceData
 {
     // メッシュ用の情報
 	matrix world;
 	float4 color;
 };
-// インスタンス情報
-StructuredBuffer<InstanceInfo> instanceInfo : register(t0);
-// インスタンスインデックス
-StructuredBuffer<int> instanceIndex : register(t1);
 
+// インスタンス情報
+StructuredBuffer<InstanceData> instanceData : register(t0);
+
+// 描画するインスタンスのインデックス
+StructuredBuffer<int> drawInstanceIndex : register(t1);
 
 // 頂点シェーダ入力内容
 struct VS_INPUT {
@@ -42,11 +44,11 @@ VS_OUTPUT vs(VS_INPUT input) {
     VS_OUTPUT output = (VS_OUTPUT)0;
 
 	// 描画対象のオブジェクトインデックスをインスタンスIDから取得する
-	uint objIndex = instanceIndex[input.instanceId];
+	uint objIndex = drawInstanceIndex[input.instanceId];
 
 	// 描画に使う情報を objIndex で取得する
-	output.pos = mul(mul(input.pos, instanceInfo[objIndex].world), viewProj);
-	output.color = instanceInfo[objIndex].color;
+	output.pos = mul(mul(input.pos, instanceData[objIndex].world), viewProj);
+	output.color = instanceData[objIndex].color;
 
     return output;
 }

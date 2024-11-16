@@ -6,6 +6,8 @@
 
 #include "utility/noncopyable.h"
 
+#include "dx12/resource/shader_resource.h"
+
 namespace dx12::resource {
 
 //---------------------------------------------------------------------------------
@@ -56,7 +58,8 @@ public:
      */
     UnorderedAccessObj() {
         this->resource_.reset(new UnorderedAccessResource());
-        this->view_.reset(new UnorderedAccessView());
+        this->view_.emplace_back(new UnorderedAccessView());
+        this->view_.emplace_back(new ShaderResourceView());
     }
 
     //---------------------------------------------------------------------------------

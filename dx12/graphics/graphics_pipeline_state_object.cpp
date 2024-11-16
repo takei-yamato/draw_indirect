@@ -105,13 +105,30 @@ bool GraphicsPipelineStateObject::createRootSignature() noexcept {
     b.RegisterSpace                     = 0;
     b.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 
-    // 構造化バッファ(t0, t1)を1つの DescriptorRange にまとめる
-    D3D12_DESCRIPTOR_RANGE t            = {};
-    t.RangeType                         = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-    t.NumDescriptors                    = 2;  // t0とt1を含む
-    t.BaseShaderRegister                = 0;  // t0の開始レジスタ
-    t.RegisterSpace                     = 0;
-    t.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+    //// 構造化バッファ(t0, t1)を1つの DescriptorRange にまとめる
+    // D3D12_DESCRIPTOR_RANGE t            = {};
+    // t.RangeType                         = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+    // t.NumDescriptors                    = 2;  // t0とt1を含む
+    // t.BaseShaderRegister                = 0;  // t0の開始レジスタ
+    // t.RegisterSpace                     = 0;
+    // t.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+
+    // 構造化バッファ( t0 )
+    D3D12_DESCRIPTOR_RANGE t0            = {};
+    t0.RangeType                         = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+    t0.NumDescriptors                    = 1;
+    t0.BaseShaderRegister                = 0;
+    t0.RegisterSpace                     = 0;
+    t0.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+
+    // 構造化バッファ( t1 )
+    D3D12_DESCRIPTOR_RANGE t1            = {};
+    t1.RangeType                         = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+    t1.NumDescriptors                    = 1;
+    t1.BaseShaderRegister                = 1;
+    t1.RegisterSpace                     = 0;
+    t1.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+
 
     // スタティックサンプラ( s0 )
     D3D12_STATIC_SAMPLER_DESC sampler = {};
@@ -130,7 +147,7 @@ bool GraphicsPipelineStateObject::createRootSignature() noexcept {
     sampler.ShaderVisibility          = D3D12_SHADER_VISIBILITY_ALL;
 
     // ルートパラメータ
-    constexpr auto       paramNum                 = 2;
+    constexpr auto       paramNum                 = 3;
     D3D12_ROOT_PARAMETER rootParameters[paramNum] = {};
 
     rootParameters[0].ParameterType                       = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
@@ -140,7 +157,12 @@ bool GraphicsPipelineStateObject::createRootSignature() noexcept {
     rootParameters[1].ParameterType                       = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
     rootParameters[1].ShaderVisibility                    = D3D12_SHADER_VISIBILITY_VERTEX;
     rootParameters[1].DescriptorTable.NumDescriptorRanges = 1;
-    rootParameters[1].DescriptorTable.pDescriptorRanges   = &t;
+    rootParameters[1].DescriptorTable.pDescriptorRanges   = &t0;
+    rootParameters[2].ParameterType                       = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+    rootParameters[2].ShaderVisibility                    = D3D12_SHADER_VISIBILITY_VERTEX;
+    rootParameters[2].DescriptorTable.NumDescriptorRanges = 1;
+    rootParameters[2].DescriptorTable.pDescriptorRanges   = &t1;
+
 
     // ルートシグネチャ
     D3D12_ROOT_SIGNATURE_DESC rootSignatureDesc = {};

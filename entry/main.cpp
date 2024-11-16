@@ -32,23 +32,18 @@ using namespace dx12;
 
 namespace {
 
-// フレームバッファ数
-constexpr uint32_t frameBufferNum = 2;
-
-// インスタンス数（同一の物を一度に描画する数）
-constexpr uint32_t instanceNum = 8 * 8 * 8 * 8 * 8;
+constexpr uint32_t frameBufferNum = 2;                  // フレームバッファ数
+constexpr uint32_t instanceNum    = 8 * 8 * 8 * 8 * 8;  // インスタンス数（同一の物を一度に描画する数）
 
 // シーンコンスタントバッファのフォーマット
 struct ConstantBufferFormat {
-    // ビュープロジェクション
-    DirectX::XMMATRIX viewProj{};
+    DirectX::XMMATRIX viewProj{};  // ビュープロジェクション
 };
 
 // インスタンス情報バッファのフォーマット
 struct InstanceBufferFormat {
-    // オブジェクト用の情報
-    DirectX::XMMATRIX world{};
-    DirectX::XMFLOAT4 color{};
+    DirectX::XMMATRIX world{};  // オブジェクトのワールド座標
+    DirectX::XMFLOAT4 color{};  // オブジェクトのカラー};
 };
 
 // 頂点フォーマット
@@ -66,61 +61,48 @@ Vertex vertexData[] = {
 };
 
 // インデックスデータ
-uint16_t indexData[] = {0, 1, 2, 2, 1, 3};
+uint16_t indexData[] = {
+    0, 1, 2,
+    2, 1, 3};
 
-// フレームバッファ
-resource::FrameBuffer frameBuffer(frameBufferNum);
+resource::FrameBuffer frameBuffer(frameBufferNum);  // フレームバッファ
+DescriptorHeap        descriptorHeap{};             // ディスクリプタヒープ
+resource::Mesh        mesh{};                       // メッシュ
 
-// ディスクリプタヒープ
-DescriptorHeap descriptorHeap{};
-// メッシュ
-resource::Mesh mesh{};
-// シーンコンスタントバッファ
-resource::ConstantBufferObj<ConstantBufferFormat> sceneConstantBuffer{};
-// インスタンス情報バッファ
-resource::ShaderResourceObj<InstanceBufferFormat, instanceNum> instanceBuffer{};
-// インスタンスインデックスバッファ
-resource::ShaderResourceObj<int, instanceNum> instanceIndexBuffer{};
+resource::ConstantBufferObj<ConstantBufferFormat>              sceneData{};          // シーンデータ
+resource::ShaderResourceObj<InstanceBufferFormat, instanceNum> instanceData{};       // 各インスタンスデータ
+resource::ConstantBufferObj<camera::Frustum>                   frustumData{};        // フラスタムデータ
+resource::UnorderedAccessObj<int>                              drawInstanceCount{};  // 描画するインスタンスのカウント
+resource::UnorderedAccessObj<int, instanceNum>                 drawInstanceIndex{};  // 描画するインスタンスのインデックス（同一リソースで SRV UAV の両方を作る）
 
-// フラスタムコンスタントバッファ
-resource::ConstantBufferObj<camera::Frustum> frustumConstantBuffer{};
-// インスタンスインデックスバッファ(コンピュート処理の書き込み先)
-resource::UnorderedAccessObj<int, instanceNum> instanceIndex{};
+graphics::GraphicsPipelineStateObject graphicsPso{};  // グラフィックスパイプラインステートオブジェクト
+graphics::ComputePipelineStateObject  computePso{};   // コンピュートパイプラインステートオブジェクト
 
-// パイプラインステートオブジェクト
-graphics::GraphicsPipelineStateObject graphicsPso{};
-graphics::ComputePipelineStateObject  computePso{};
+Fence    fence{};         // コマンドフェンス
+uint64_t fenceValue{};    // フェンス値
+HANDLE   waitGpuEvent{};  // GPU と CPU 同期用のイベントハンドル
 
-// フェンス
-Fence fence{};
-Fence computeFence{};
-// フェンス値
-uint64_t fenceValue{};
-// イベントハンドル
-HANDLE waitGpuEvent{};
+CommandList commandListBegin{};    // 開始処理用コマンドリスト
+CommandList commandListDraw{};     // 描画用コマンドリスト
+CommandList commandListCompute{};  // コンピュート用コマンドリスト
+CommandList commandListEnd{};      // 終了処理用コマンドリスト
 
-// コマンドリスト
-CommandList commandListBegin{};
-CommandList commandListDraw{};
-CommandList commandListEnd{};
-CommandList commandListCompute{};
+CommandQueue commandQueue{};         // 描画用コマンドキュー
+CommandQueue commandQueueCompute{};  // コンピュート用コマンドキュー
 
-// コマンドキュー
-CommandQueue commandQueue{};
-CommandQueue commandQueueCompute{};
+DirectX::XMFLOAT3 position[instanceNum]{};  // インスタンス位置
 
 // カメラ
-DirectX::XMFLOAT3 eye(0.0f, 0.0f, -20.0f);
-DirectX::XMFLOAT3 dir(0.0f, 0.0f, 1.0f);
-DirectX::XMFLOAT3 up(0.0f, 1.0f, 0.0f);
-float             aspect   = static_cast<float>(window::width()) / static_cast<float>(window::height());
-DirectX::XMMATRIX view     = DirectX::XMMatrixLookToLH(XMLoadFloat3(&eye), XMLoadFloat3(&dir), XMLoadFloat3(&up));
-DirectX::XMMATRIX proj     = DirectX::XMMatrixPerspectiveFovLH(3.14159f / 4.f, aspect, 0.1f, 1000.0f);
-DirectX::XMMATRIX viewProj = view * proj;
-camera::Frustum   frustum  = camera::createFrustumFromViewProjection(viewProj);
+const DirectX::XMFLOAT3 eye(0.0f, 0.0f, -20.0f);
+const DirectX::XMFLOAT3 dir(0.0f, 0.0f, 1.0f);
+const DirectX::XMFLOAT3 up(0.0f, 1.0f, 0.0f);
+const float             aspect   = static_cast<float>(window::width()) / static_cast<float>(window::height());
+const DirectX::XMMATRIX view     = DirectX::XMMatrixLookToLH(XMLoadFloat3(&eye), XMLoadFloat3(&dir), XMLoadFloat3(&up));
+const DirectX::XMMATRIX proj     = DirectX::XMMatrixPerspectiveFovLH(3.14159f / 4.f, aspect, 0.1f, 1000.0f);
+const DirectX::XMMATRIX viewProj = view * proj;
 
-// インスタンス位置
-DirectX::XMFLOAT3 position[instanceNum]{};
+// フラスタム
+camera::Frustum frustum = camera::createFrustumFromViewProjection(viewProj);
 
 }  // namespace
 
@@ -147,41 +129,51 @@ bool appUpdate() noexcept {
 
             if constexpr (useGpuCulling) {
                 // コンピュート処理による視錐台カリング
-
                 // コンピュートコマンド作成
                 commandListCompute.reset();
                 computePso.setToCommandList(commandListCompute);
                 descriptorHeap.setToCommandList(commandListCompute);
 
-                sceneConstantBuffer.setToCommandList(commandListCompute, 0);
-                frustumConstantBuffer.setToCommandList(commandListCompute, 1);
-                instanceBuffer.setToCommandList(commandListCompute, 2);
-                instanceIndex.setToCommandList(commandListCompute, 3);
+                // 計算に必要な情報を設定
+                sceneData.setToCommandList(commandListCompute, 0, 0);
+                frustumData.setToCommandList(commandListCompute, 0, 1);
+                instanceData.setToCommandList(commandListCompute, 0, 2);
+                drawInstanceIndex.setToCommandList(commandListCompute, 0, 3);
+                drawInstanceCount.setToCommandList(commandListCompute, 0, 4);
 
+                // 計算開始
                 commandListCompute.get()->Dispatch(8, 8, 8);
-                commandListCompute.get()->Close();
+				// リソース書き込み完了のバリア
+                drawInstanceCount.resourceBarrier(commandListCompute, D3D12_RESOURCE_BARRIER_TYPE_UAV);
+
+				commandListCompute.get()->Close();
 
                 // コマンドリスト実行
                 std::array<ID3D12CommandList*, 1> lists{commandListCompute.get()};
                 commandQueueCompute.get()->ExecuteCommandLists(lists.size(), static_cast<ID3D12CommandList**>(lists.data()));
 
-                // コンピュート処理が終わるまで描画処理に進ませない（GPU の同期）
-                commandQueueCompute.get()->Signal(computeFence.get(), fenceValue);
-                commandQueue.get()->Wait(computeFence.get(), fenceValue);
+                // GPU と CPU の同期
+                fenceValue++;
+                commandQueueCompute.get()->Signal(fence.get(), fenceValue);
+                if (fence.get()->GetCompletedValue() < fenceValue) {
+                    fence.get()->SetEventOnCompletion(fenceValue, waitGpuEvent);
+                    WaitForSingleObject(waitGpuEvent, INFINITE);
+                }
 
                 // コンピュートシェーダの計算結果をインスタンスインデックスバッファにコピーする
-                for (auto i = 0; i < instanceNum; ++i) {
-                    if (instanceIndex[i]) {
-                        instanceIndexBuffer[drawCount++] = i;
-                    }
-                }
+                drawInstanceCount.map();
+                drawCount            = drawInstanceCount[0];
+                drawInstanceCount[0] = 0;
+                drawInstanceCount.unmap();
             } else {
+                drawInstanceIndex.map();
                 // CPU による視錐台カリング
                 for (auto i = 0; i < instanceNum; ++i) {
                     if (camera::isPositionInFrustum(frustum, position[i])) {
-                        instanceIndexBuffer[drawCount++] = i;
+                        drawInstanceIndex[drawCount++] = i;
                     }
                 }
+                drawInstanceIndex.unmap();
             }
 
             // 描画処理
@@ -198,11 +190,20 @@ bool appUpdate() noexcept {
                 graphicsPso.setToCommandList(commandListDraw);
                 mesh.setToCommandList(commandListDraw);
 
-                sceneConstantBuffer.setToCommandList(commandListDraw, 0);
-                instanceBuffer.setToCommandList(commandListDraw, 1);
+                // メッシュ描画に必要な情報を設定
+                sceneData.setToCommandList(commandListDraw, 0, 0);
+                instanceData.setToCommandList(commandListDraw, 0, 1);
+                drawInstanceIndex.setToCommandList(commandListDraw, 1, 2);
+
+                // SRVとしてアクセスできるようにバリア
+                drawInstanceIndex.resourceBarrier(commandListDraw, D3D12_RESOURCE_BARRIER_TYPE_TRANSITION, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
                 // インスタンス描画
                 commandListDraw.get()->DrawIndexedInstanced(6, drawCount, 0, 0, 0);
+
+                // UAV としてアクセスできるようにバリア
+                drawInstanceIndex.resourceBarrier(commandListDraw, D3D12_RESOURCE_BARRIER_TYPE_TRANSITION, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+
                 commandListDraw.get()->Close();
 
                 // 描画終了
@@ -263,7 +264,7 @@ INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, INT) {
             Device::instance().create();
 
             // ディスクリプタヒープを作成する
-            descriptorHeap.create(DescriptorHeap::Type::CBV_SRV_UAV, 10);
+            descriptorHeap.create(DescriptorHeap::Type::CBV_SRV_UAV, 16);
 
             // コマンドキューを作成する
             commandQueue.create(dx12::CommandType::Graphics);
@@ -276,44 +277,46 @@ INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, INT) {
             mesh.createVertexBuffer(vertexData);
             mesh.createIndexBuffer(indexData);
 
-            // ビュー行列
-            view = DirectX::XMMatrixLookToLH(XMLoadFloat3(&eye), XMLoadFloat3(&dir), XMLoadFloat3(&up));
-            // プロジェクション行列
-            proj = DirectX::XMMatrixPerspectiveFovLH(3.14159f / 4.f, aspect, 0.1f, 1000.0f);
+            // シーンデータ用リソース
+            sceneData.create();
+            sceneData[0].viewProj = DirectX::XMMatrixTranspose(viewProj);
 
-            // シーンコンスタントバッファの内容を設定する
-            sceneConstantBuffer.create();
-            sceneConstantBuffer.createView(descriptorHeap);
-            sceneConstantBuffer[0].viewProj = DirectX::XMMatrixTranspose(viewProj);
-
-            // 描画インスタンス毎の内容を設定する
-            instanceBuffer.create();
-            instanceIndexBuffer.create();
-            // Graphics RootSignature 生成で この二つ（t0,t1）を一つの DESCRIPTOR_RANGE に纏めた為、descriptorHeap を連続で確保する
-            instanceBuffer.createView(descriptorHeap);
-            instanceIndexBuffer.createView(descriptorHeap);
-
+            // 描画インスタンスデータ用リソース
+            instanceData.create();
             // 描画インスタンスの情報を初期化する
             for (auto i = 0; i < instanceNum; ++i) {
-                auto rad                = distr(re) * 3.14f * 2.f;
-                auto r                  = distr(re) * 100.0f;
-                position[i]             = DirectX::XMFLOAT3(cosf(rad) * r, sinf(rad) * r, 0);
-                instanceBuffer[i].world = DirectX::XMMatrixTranspose(DirectX::XMMatrixTranslation(position[i].x, position[i].y, 0));
-                instanceBuffer[i].color = DirectX::XMFLOAT4(distr(re), distr(re), distr(re), 1.0f);
-                instanceIndexBuffer[i]  = i;
+                auto rad              = distr(re) * 3.14f * 2.f;
+                auto r                = distr(re) * 100.0f;
+                position[i]           = DirectX::XMFLOAT3(cosf(rad) * r, sinf(rad) * r, 0);
+                instanceData[i].world = DirectX::XMMatrixTranspose(DirectX::XMMatrixTranslation(position[i].x, position[i].y, 0));
+                instanceData[i].color = DirectX::XMFLOAT4(distr(re), distr(re), distr(re), 1.0f);
             }
 
-            // フラスタム
-            frustumConstantBuffer.create();
-            frustumConstantBuffer.createView(descriptorHeap);
-            frustumConstantBuffer[0] = frustum;
+            // フラスタムデータ用リソース
+            frustumData.create();
+            frustumData[0] = frustum;
 
-            // コンピュート処理の結果バッファを生成する
-            instanceIndex.create();
-            instanceIndex.createView(descriptorHeap);
+            // 描画するインスタンスのインデックス用リソース
+            drawInstanceIndex.create();
+            // 描画するインスタンスのカウント用リソース
+            drawInstanceCount.create();
+
+            // 各リソースのビューを生成する
+            sceneData.createView(0, descriptorHeap);
+            frustumData.createView(0, descriptorHeap);
+            instanceData.createView(0, descriptorHeap);
+            drawInstanceCount.createView(0, descriptorHeap);
+            drawInstanceIndex.createView(0, descriptorHeap);
+            drawInstanceIndex.createView(1, descriptorHeap);
+
+            //// Graphics RootSignature 生成で この二つ（t0,t1）の SRV を一つの DESCRIPTOR_RANGE に纏めた為、descriptorHeap を連続で確保する
+            // instanceData.createView(0, descriptorHeap);
+            // drawInstanceIndex.createView(1, descriptorHeap);
+            //// Compute RootSignature 生成で この二つ（u0,u1）の UAV をを一つの DESCRIPTOR_RANGE に纏めた為、descriptorHeap を連続で確保する
+            // drawInstanceIndex.createView(0, descriptorHeap);
+            // drawInstanceCount.createView(0, descriptorHeap);
 
             // フェンス（CPUとGPUの同期オブジェクト）を作成する
-            computeFence.create();
             fence.create();
             waitGpuEvent = CreateEvent(nullptr, false, false, "WAIT_GPU");
 
