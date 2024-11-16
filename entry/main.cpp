@@ -93,7 +93,7 @@ CommandQueue commandQueueCompute{};  // コンピュート用コマンドキュ�
 DirectX::XMFLOAT3 position[instanceNum]{};  // インスタンス位置
 
 // カメラ
-const DirectX::XMFLOAT3 eye(0.0f, 0.0f, -20.0f);
+const DirectX::XMFLOAT3 eye(0.0f, 0.0f, -40.0f);
 const DirectX::XMFLOAT3 dir(0.0f, 0.0f, 1.0f);
 const DirectX::XMFLOAT3 up(0.0f, 1.0f, 0.0f);
 const float             aspect   = static_cast<float>(window::width()) / static_cast<float>(window::height());
@@ -101,13 +101,11 @@ const DirectX::XMMATRIX view     = DirectX::XMMatrixLookToLH(XMLoadFloat3(&eye),
 const DirectX::XMMATRIX proj     = DirectX::XMMatrixPerspectiveFovLH(3.14159f / 4.f, aspect, 0.1f, 1000.0f);
 const DirectX::XMMATRIX viewProj = view * proj;
 
-// フラスタム
-camera::Frustum frustum = camera::createFrustumFromViewProjection(viewProj);
+// フラスタム（カリングされている事が分かるように狭める）
+const DirectX::XMMATRIX culProj = DirectX::XMMatrixPerspectiveFovLH(3.14159f / 4.5f, aspect, 0.1f, 1000.0f);
+camera::Frustum         frustum = camera::createFrustumFromViewProjection(view * culProj);
 
 }  // namespace
-
-// GPU カリングを利用するか
-constexpr bool useGpuCulling = true;
 
 namespace {
 //---------------------------------------------------------------------------------
@@ -124,10 +122,13 @@ bool appUpdate() noexcept {
         {
             TIME_CHECK_SCORP("更新");
 
+			// 1 が入力されていたら GPU カリングを利用する
+            auto useGpuCulling = input::Input::instance().getKey('1');
+
             // 描画するインスタンス数
             auto drawCount = 0;
 
-            if constexpr (useGpuCulling) {
+            if (useGpuCulling) {
                 // コンピュート処理による視錐台カリング
                 // コンピュートコマンド作成
                 commandListCompute.reset();
@@ -152,7 +153,7 @@ bool appUpdate() noexcept {
                 std::array<ID3D12CommandList*, 1> lists{commandListCompute.get()};
                 commandQueueCompute.get()->ExecuteCommandLists(lists.size(), static_cast<ID3D12CommandList**>(lists.data()));
 
-                // GPU と CPU の同期
+                // 計算結果（描画インスタンスのカウント）を CPU で利用する為、GPU と CPU を同期させなければならない
                 fenceValue++;
                 commandQueueCompute.get()->Signal(fence.get(), fenceValue);
                 if (fence.get()->GetCompletedValue() < fenceValue) {
@@ -160,11 +161,12 @@ bool appUpdate() noexcept {
                     WaitForSingleObject(waitGpuEvent, INFINITE);
                 }
 
-                // コンピュートシェーダの計算結果をインスタンスインデックスバッファにコピーする
+                // 計算結果を取得する
                 drawInstanceCount.map();
                 drawCount            = drawInstanceCount[0];
                 drawInstanceCount[0] = 0;
                 drawInstanceCount.unmap();
+
             } else {
                 drawInstanceIndex.map();
                 // CPU による視錐台カリング
@@ -287,8 +289,8 @@ INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, INT) {
             for (auto i = 0; i < instanceNum; ++i) {
                 auto rad              = distr(re) * 3.14f * 2.f;
                 auto r                = distr(re) * 100.0f;
-                position[i]           = DirectX::XMFLOAT3(cosf(rad) * r, sinf(rad) * r, 0);
-                instanceData[i].world = DirectX::XMMatrixTranspose(DirectX::XMMatrixTranslation(position[i].x, position[i].y, 0));
+                position[i]           = DirectX::XMFLOAT3(cosf(rad) * r, sinf(rad) * r, distr(re) * 20.0f);
+                instanceData[i].world = DirectX::XMMatrixTranspose(DirectX::XMMatrixTranslation(position[i].x, position[i].y, position[i].z));
                 instanceData[i].color = DirectX::XMFLOAT4(distr(re), distr(re), distr(re), 1.0f);
             }
 

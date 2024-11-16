@@ -69,6 +69,11 @@ bool FrameBuffer::createRenderTargetView(IDXGISwapChain3* swapChain) noexcept {
         Device::instance().device()->CreateRenderTargetView(resources_[i].Get(), nullptr, handle);
     }
 
+    // デプスステンシル
+    if (!depthStencil_.create()) {
+        ASSERT(false, "デプスステンシル作成に失敗");
+    }
+
     return true;
 }
 
@@ -81,11 +86,13 @@ void FrameBuffer::startRendering(CommandList& commandList) noexcept {
     resourceBarrier(commandList, resources_[currentBufferIndex_].Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
 
     // レンダーターゲット
-    D3D12_CPU_DESCRIPTOR_HANDLE handles[] = {renderTargetView()};
-    commandList.get()->OMSetRenderTargets(1, handles, false, nullptr);
+    D3D12_CPU_DESCRIPTOR_HANDLE handles[]            = {renderTargetView()};
+    D3D12_CPU_DESCRIPTOR_HANDLE depthStencilHandle[] = {depthStencil_.view()};
+    commandList.get()->OMSetRenderTargets(1, handles, false, depthStencilHandle);
 
     // レンダーターゲットクリア
     commandList.get()->ClearRenderTargetView(renderTargetView(), clearColor, 0, nullptr);
+    commandList.get()->ClearDepthStencilView(depthStencil_.view(), D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
 }
 
 //---------------------------------------------------------------------------------
@@ -94,9 +101,11 @@ void FrameBuffer::startRendering(CommandList& commandList) noexcept {
  * @param	commandList	利用するコマンドリスト
  */
 void FrameBuffer::setToRenderTarget(CommandList& commandList) noexcept {
+
     // レンダーターゲット
-    D3D12_CPU_DESCRIPTOR_HANDLE handles[] = {renderTargetView()};
-    commandList.get()->OMSetRenderTargets(1, handles, false, nullptr);
+    D3D12_CPU_DESCRIPTOR_HANDLE handles[]            = {renderTargetView()};
+    D3D12_CPU_DESCRIPTOR_HANDLE depthStencilHandle[] = {depthStencil_.view()};
+    commandList.get()->OMSetRenderTargets(1, handles, false, depthStencilHandle);
 
     // ビューポート
     D3D12_VIEWPORT viewport = {};

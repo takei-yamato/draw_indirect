@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include "dx12/command_list.h"
+#include "dx12/resource/depth_stencil.h"
 
 #include "utility/noncopyable.h"
 
@@ -85,10 +86,11 @@ private:
     D3D12_CPU_DESCRIPTOR_HANDLE renderTargetView() const noexcept;
 
 private:
-    Microsoft::WRL::ComPtr<ID3D12DescriptorHeap>        heap_               = {};  ///< ディスクリプタヒープ
-    std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>> resources_          = {};  ///< リソース
-    const uint32_t                                      bufferNum_          = {};  ///< バッファ数
-    uint32_t                                            size_               = {};  ///< ディスクリプタサイズ
-    uint32_t                                            currentBufferIndex_ = {};  ///< 現在のバッファインデックス
+    Microsoft::WRL::ComPtr<ID3D12DescriptorHeap>        heap_{};                ///< ディスクリプタヒープ
+    std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>> resources_{};           ///< リソース
+    const uint32_t                                      bufferNum_{};           ///< バッファ数
+    uint32_t                                            size_{};                ///< ディスクリプタサイズ
+    uint32_t                                            currentBufferIndex_{};  ///< 現在のバッファインデックス
+    resource::DepthStencil                              depthStencil_{};        ///< デプスステンシル
 };
 }  // namespace dx12::resource

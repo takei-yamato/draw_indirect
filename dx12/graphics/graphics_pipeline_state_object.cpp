@@ -74,12 +74,15 @@ bool GraphicsPipelineStateObject::createPipelineState() noexcept {
     psoDesc.PS                                 = {shader_->pixelShader()->GetBufferPointer(), shader_->pixelShader()->GetBufferSize()};
     psoDesc.RasterizerState                    = rasterizerDesc;
     psoDesc.BlendState                         = blendDesc;
-    psoDesc.DepthStencilState.DepthEnable      = false;
+    psoDesc.DepthStencilState.DepthEnable      = true;
     psoDesc.DepthStencilState.StencilEnable    = false;
+    psoDesc.DepthStencilState.DepthWriteMask   = D3D12_DEPTH_WRITE_MASK_ALL;
+    psoDesc.DepthStencilState.DepthFunc        = D3D12_COMPARISON_FUNC_LESS_EQUAL;
     psoDesc.SampleMask                         = UINT_MAX;
     psoDesc.PrimitiveTopologyType              = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
     psoDesc.NumRenderTargets                   = 1;
     psoDesc.RTVFormats[0]                      = DXGI_FORMAT_R8G8B8A8_UNORM;
+    psoDesc.DSVFormat                          = DXGI_FORMAT_D24_UNORM_S8_UINT;
     psoDesc.SampleDesc.Count                   = 1;
     auto res                                   = dx12::Device::instance().device()->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(pipelineState_.GetAddressOf()));
     if (FAILED(res)) {
@@ -129,7 +132,6 @@ bool GraphicsPipelineStateObject::createRootSignature() noexcept {
     t1.RegisterSpace                     = 0;
     t1.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 
-
     // スタティックサンプラ( s0 )
     D3D12_STATIC_SAMPLER_DESC sampler = {};
     sampler.Filter                    = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
@@ -162,7 +164,6 @@ bool GraphicsPipelineStateObject::createRootSignature() noexcept {
     rootParameters[2].ShaderVisibility                    = D3D12_SHADER_VISIBILITY_VERTEX;
     rootParameters[2].DescriptorTable.NumDescriptorRanges = 1;
     rootParameters[2].DescriptorTable.pDescriptorRanges   = &t1;
-
 
     // ルートシグネチャ
     D3D12_ROOT_SIGNATURE_DESC rootSignatureDesc = {};

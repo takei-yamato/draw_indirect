@@ -70,6 +70,9 @@
     <ClCompile Include="camera\frustum.cpp">
       <Filter>camera</Filter>
     </ClCompile>
+    <ClCompile Include="dx12\resource\depth_stencil.cpp">
+      <Filter>dx12\resource</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="def.h" />
@@ -144,6 +147,10 @@
     </ClInclude>
     <ClInclude Include="camera\frustum.h">
       <Filter>camera</Filter>
+    </ClInclude>
+    <ClInclude Include="dx12\descriptor_handle.h" />
+    <ClInclude Include="dx12\resource\depth_stencil.h">
+      <Filter>dx12\resource</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
