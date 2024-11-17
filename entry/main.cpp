@@ -54,10 +54,10 @@ struct Vertex {
 
 // 頂点データ
 Vertex vertexData[] = {
-    { {-0.5f, 0.5f, 0.0f}, {0, 0}},
-    {  {0.5f, 0.5f, 0.0f}, {1, 1}},
-    {{-0.5f, -0.5f, 0.0f}, {0, 1}},
-    { {0.5f, -0.5f, 0.0f}, {1, 0}}
+    { {-1.0f, 1.0f, 0.0f}, {0, 0}},
+    {  {1.0f, 1.0f, 0.0f}, {1, 1}},
+    {{-1.0f, -1.0f, 0.0f}, {0, 1}},
+    { {1.0f, -1.0f, 0.0f}, {1, 0}}
 };
 
 // インデックスデータ
@@ -93,7 +93,7 @@ CommandQueue commandQueueCompute{};  // コンピュート用コマンドキュ�
 DirectX::XMFLOAT3 position[instanceNum]{};  // インスタンス位置
 
 // カメラ
-const DirectX::XMFLOAT3 eye(0.0f, 0.0f, -40.0f);
+const DirectX::XMFLOAT3 eye(0.0f, 0.0f, -100.0f);
 const DirectX::XMFLOAT3 dir(0.0f, 0.0f, 1.0f);
 const DirectX::XMFLOAT3 up(0.0f, 1.0f, 0.0f);
 const float             aspect   = static_cast<float>(window::width()) / static_cast<float>(window::height());
@@ -122,15 +122,16 @@ bool appUpdate() noexcept {
         {
             TIME_CHECK_SCORP("更新");
 
-			// 1 が入力されていたら GPU カリングを利用する
-            auto useGpuCulling = input::Input::instance().getKey('1');
+			// 1 が入力されていたら CPU でカリングする
+            auto useCpuCulling = input::Input::instance().getKey('1');
 
             // 描画するインスタンス数
             auto drawCount = 0;
 
-            if (useGpuCulling) {
-                // コンピュート処理による視錐台カリング
-                // コンピュートコマンド作成
+            if (!useCpuCulling) {
+                // GPU による視錐台カリング
+
+				// コンピュートコマンド作成
                 commandListCompute.reset();
                 computePso.setToCommandList(commandListCompute);
                 descriptorHeap.setToCommandList(commandListCompute);
@@ -168,8 +169,8 @@ bool appUpdate() noexcept {
                 drawInstanceCount.unmap();
 
             } else {
-                drawInstanceIndex.map();
                 // CPU による視錐台カリング
+                drawInstanceIndex.map();
                 for (auto i = 0; i < instanceNum; ++i) {
                     if (camera::isPositionInFrustum(frustum, position[i])) {
                         drawInstanceIndex[drawCount++] = i;
@@ -251,7 +252,7 @@ bool appUpdate() noexcept {
 INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, INT) {
     std::random_device                    rd;
     std::default_random_engine            re(rd());
-    std::uniform_real_distribution<float> distr(0, 1);
+    std::uniform_real_distribution<float> distr(0.0f, 1.0f);
     {
         // メモリリークチェック
         _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
@@ -288,8 +289,8 @@ INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, INT) {
             // 描画インスタンスの情報を初期化する
             for (auto i = 0; i < instanceNum; ++i) {
                 auto rad              = distr(re) * 3.14f * 2.f;
-                auto r                = distr(re) * 100.0f;
-                position[i]           = DirectX::XMFLOAT3(cosf(rad) * r, sinf(rad) * r, distr(re) * 20.0f);
+                auto r                = distr(re) * 200.0f;
+                position[i]           = DirectX::XMFLOAT3(cosf(rad) * r, sinf(rad) * r, (distr(re) - 0.5f) * 2.0f * 50.0f);
                 instanceData[i].world = DirectX::XMMatrixTranspose(DirectX::XMMatrixTranslation(position[i].x, position[i].y, position[i].z));
                 instanceData[i].color = DirectX::XMFLOAT4(distr(re), distr(re), distr(re), 1.0f);
             }
