@@ -136,11 +136,11 @@ bool appUpdate() noexcept {
                 descriptorHeap.setToCommandList(commandListCompute);
 
                 // 計算に必要な情報を設定
-                sceneData.setToCommandList(commandListCompute, 0, 0);
-                frustumData.setToCommandList(commandListCompute, 0, 1);
-                instanceData.setToCommandList(commandListCompute, 0, 2);
-                drawInstanceIndex.setToCommandList(commandListCompute, 0, 3);
-                drawInstanceCount.setToCommandList(commandListCompute, 0, 4);
+                sceneData.setToCommandList(commandListCompute, ViewType::CBV, 0);
+                frustumData.setToCommandList(commandListCompute, ViewType::CBV, 1);
+                instanceData.setToCommandList(commandListCompute, ViewType::SRV, 2);
+                drawInstanceIndex.setToCommandList(commandListCompute, ViewType::UAV, 3);
+                drawInstanceCount.setToCommandList(commandListCompute, ViewType::UAV, 4);
 
                 // 計算開始
                 commandListCompute.get()->Dispatch(8, 8, 8);
@@ -193,9 +193,9 @@ bool appUpdate() noexcept {
                 mesh.setToCommandList(commandListDraw);
 
                 // メッシュ描画に必要な情報を設定
-                sceneData.setToCommandList(commandListDraw, 0, 0);
-                instanceData.setToCommandList(commandListDraw, 0, 1);
-                drawInstanceIndex.setToCommandList(commandListDraw, 1, 2);
+                sceneData.setToCommandList(commandListDraw, ViewType::CBV, 0);
+                instanceData.setToCommandList(commandListDraw, ViewType::SRV, 1);
+                drawInstanceIndex.setToCommandList(commandListDraw, ViewType::SRV, 2);
 
                 // SRVとしてアクセスできるようにバリア
                 drawInstanceIndex.resourceBarrier(commandListDraw, D3D12_RESOURCE_BARRIER_TYPE_TRANSITION, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
@@ -304,19 +304,12 @@ INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, INT) {
             drawInstanceCount.create();
 
             // 各リソースのビューを生成する
-            sceneData.createView(0, descriptorHeap);
-            frustumData.createView(0, descriptorHeap);
-            instanceData.createView(0, descriptorHeap);
-            drawInstanceCount.createView(0, descriptorHeap);
-            drawInstanceIndex.createView(0, descriptorHeap);
-            drawInstanceIndex.createView(1, descriptorHeap);
-
-            //// Graphics RootSignature 生成で この二つ（t0,t1）の SRV を一つの DESCRIPTOR_RANGE に纏めた為、descriptorHeap を連続で確保する
-            // instanceData.createView(0, descriptorHeap);
-            // drawInstanceIndex.createView(1, descriptorHeap);
-            //// Compute RootSignature 生成で この二つ（u0,u1）の UAV をを一つの DESCRIPTOR_RANGE に纏めた為、descriptorHeap を連続で確保する
-            // drawInstanceIndex.createView(0, descriptorHeap);
-            // drawInstanceCount.createView(0, descriptorHeap);
+            sceneData.createView(ViewType::CBV, descriptorHeap);
+            frustumData.createView(ViewType::CBV, descriptorHeap);
+            instanceData.createView(ViewType::SRV, descriptorHeap);
+            drawInstanceCount.createView(ViewType::UAV, descriptorHeap);
+            drawInstanceIndex.createView(ViewType::UAV, descriptorHeap);
+            drawInstanceIndex.createView(ViewType::SRV, descriptorHeap);
 
             // フェンス（CPUとGPUの同期オブジェクト）を作成する
             fence.create();

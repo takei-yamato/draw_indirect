@@ -58,8 +58,8 @@ public:
      */
     UnorderedAccessObj() {
         this->resource_.reset(new UnorderedAccessResource());
-        this->view_.emplace_back(new UnorderedAccessView());
-        this->view_.emplace_back(new ShaderResourceView());
+        this->view_[ViewIndex(ViewType::SRV)] = std::make_unique<ShaderResourceView>();
+        this->view_[ViewIndex(ViewType::UAV)] = std::make_unique<UnorderedAccessView>();
     }
 
     //---------------------------------------------------------------------------------

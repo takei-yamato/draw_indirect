@@ -68,14 +68,6 @@ bool ComputePipelineStateObject::createRootSignature() noexcept {
     t.RegisterSpace                     = 0;
     t.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 
-    //// アンオーダードバッファ（u0~u1）
-    //D3D12_DESCRIPTOR_RANGE u            = {};
-    //u.RangeType                         = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
-    //u.NumDescriptors                    = 2; // u0とu1を含む
-    //u.BaseShaderRegister                = 0; // u0の開始レジスタ
-    //u.RegisterSpace                     = 0;
-    //u.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
-
     // アンオーダードバッファ（ u0 ）
     D3D12_DESCRIPTOR_RANGE u0            = {};
     u0.RangeType                         = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
@@ -91,7 +83,6 @@ bool ComputePipelineStateObject::createRootSignature() noexcept {
     u1.BaseShaderRegister                = 1;
     u1.RegisterSpace                     = 0;
     u1.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
-
 
     // ルートパラメータ
     constexpr auto       paramNum                 = 5;

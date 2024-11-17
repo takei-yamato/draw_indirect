@@ -77,7 +77,7 @@ bool GraphicsPipelineStateObject::createPipelineState() noexcept {
     psoDesc.DepthStencilState.DepthEnable      = true;
     psoDesc.DepthStencilState.StencilEnable    = false;
     psoDesc.DepthStencilState.DepthWriteMask   = D3D12_DEPTH_WRITE_MASK_ALL;
-    psoDesc.DepthStencilState.DepthFunc        = D3D12_COMPARISON_FUNC_LESS_EQUAL;
+    psoDesc.DepthStencilState.DepthFunc        = D3D12_COMPARISON_FUNC_LESS;
     psoDesc.SampleMask                         = UINT_MAX;
     psoDesc.PrimitiveTopologyType              = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
     psoDesc.NumRenderTargets                   = 1;
@@ -107,14 +107,6 @@ bool GraphicsPipelineStateObject::createRootSignature() noexcept {
     b.BaseShaderRegister                = 0;
     b.RegisterSpace                     = 0;
     b.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
-
-    //// 構造化バッファ(t0, t1)を1つの DescriptorRange にまとめる
-    // D3D12_DESCRIPTOR_RANGE t            = {};
-    // t.RangeType                         = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-    // t.NumDescriptors                    = 2;  // t0とt1を含む
-    // t.BaseShaderRegister                = 0;  // t0の開始レジスタ
-    // t.RegisterSpace                     = 0;
-    // t.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 
     // 構造化バッファ( t0 )
     D3D12_DESCRIPTOR_RANGE t0            = {};

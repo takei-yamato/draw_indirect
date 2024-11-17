@@ -1,5 +1,7 @@
 ﻿#pragma once
 
+#include <utility>
+
 #include "dx12/device.h"
 #include "dx12/command_list.h"
 #include "dx12/descriptor_heap.h"
@@ -15,7 +17,16 @@ namespace dx12 {
  */
 class ResourceBase : public utility::Noncopyable {
 public:
-    ResourceBase()          = default;
+    //---------------------------------------------------------------------------------
+    /**
+     * @brief	コンストラクタ
+     */
+    ResourceBase() = default;
+
+    //---------------------------------------------------------------------------------
+    /**
+     * @brief	デストラクタ
+     */
     virtual ~ResourceBase() = default;
 
 public:
@@ -109,7 +120,16 @@ protected:
  */
 class ResourceViewBase : public utility::Noncopyable {
 public:
-    ResourceViewBase()          = default;
+    //---------------------------------------------------------------------------------
+    /**
+     * @brief	コンストラクタ
+     */
+    ResourceViewBase() = default;
+
+    //---------------------------------------------------------------------------------
+    /**
+     * @brief	デストラクタ
+     */
     virtual ~ResourceViewBase() = default;
 
 public:
@@ -138,6 +158,23 @@ protected:
 //---------------------------------------------------------------------------------
 /**
  * @brief
+ * リソースビュータイプ
+ */
+enum class ViewType : uint8_t {
+	CBV,
+    SRV,
+    UAV,
+
+    Count,
+};
+template <class T>
+constexpr std::underlying_type_t<T> ViewIndex(T type) {
+    return static_cast<std::underlying_type_t<T>>(type);
+}
+
+//---------------------------------------------------------------------------------
+/**
+ * @brief
  * GPU オブジェクト
  */
 template <class T, uint32_t NUM>
@@ -147,7 +184,9 @@ public:
     /**
      * @brief	コンストラクタ
      */
-    GpuObj() = default;
+	GpuObj() {
+        view_.resize(ViewIndex(ViewType::Count));
+	}
 
     //---------------------------------------------------------------------------------
     /**
@@ -167,23 +206,26 @@ public:
     //---------------------------------------------------------------------------------
     /**
      * @brief	ビューを生成する
-     * @param	viewIndex		ビューのインデックス
+     * @param	viewType		ビュー
      * @param	descriptorHeap	ビュー（ディスクリプタ）登録先のヒープ
      */
-    void createView(uint32_t viewIndex, DescriptorHeap& descriptorHeap) noexcept {
-        view_[viewIndex]->createView(descriptorHeap, resource_.get());
+    void createView(ViewType viewType, DescriptorHeap& descriptorHeap) noexcept {
+        ASSERT(view_[ViewIndex(viewType)] != nullptr, "ビューがありません");
+        view_[ViewIndex(viewType)]->createView(descriptorHeap, resource_.get());
     }
 
     //---------------------------------------------------------------------------------
     /**
      * @brief	コマンドリストに設定する
      * @param	commandList		設定先のコマンドリスト
-     * @param	viewIndex		ビューのインデックス
+     * @param	viewType		ビュー
      * @param	rootParamIndex	ルートパラメータのインデックス
      */
-    void setToCommandList(CommandList& commandList, uint32_t viewIndex, uint32_t rootParamIndex) noexcept {
-        unmap();
-        view_[viewIndex]->setToCommandList(commandList, rootParamIndex);
+    void setToCommandList(CommandList& commandList, ViewType viewType, uint32_t rootParamIndex) noexcept {
+        ASSERT(view_[ViewIndex(viewType)] != nullptr, "ビューがありません");
+
+		unmap();
+        view_[ViewIndex(viewType)]->setToCommandList(commandList, rootParamIndex);
     }
 
     //---------------------------------------------------------------------------------
