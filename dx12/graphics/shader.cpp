@@ -8,17 +8,6 @@ namespace dx12::graphics {
 
 //---------------------------------------------------------------------------------
 /**
- * @brief	コンストラクタ
- * @param	filePath	ファイルパス( 「asset/」から開始の相対パス )
- */
-Shader::Shader(std::string_view filePath) {
-    if (!create(filePath)) {
-        ASSERT(false, "シェーダーの生成に失敗しました");
-	}
-}
-
-//---------------------------------------------------------------------------------
-/**
  * @brief	頂点シェーダを取得する
  * @return	頂点シェーダのデータ
  */
@@ -83,6 +72,8 @@ bool Shader::create(std::string_view filePath) noexcept {
     } else {
         r = true;
     }
+
+	ASSERT(r, "シェーダの作成に失敗");
 
     return r;
 }

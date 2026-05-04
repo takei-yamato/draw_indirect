@@ -13,6 +13,11 @@
 #include "dx12/resource/unordered_access.h"
 #include "dx12/resource/constant.h"
 
+#include "dx12/graphics/graphics_root_signature.h"
+#include "dx12/graphics/compute_root_signature.h"
+
+#include "dx12/graphics/command_signature.h"
+
 #include "dx12/graphics/graphics_pipeline_state_object.h"
 #include "dx12/graphics/compute_pipeline_state_object.h"
 
@@ -52,6 +57,12 @@ struct Vertex {
     DirectX::XMFLOAT2 uv{};
 };
 
+// ExecuteIndirect 用引数バッファのフォーマット
+struct IndirectArgs {
+    D3D12_GPU_VIRTUAL_ADDRESS    drawInstanceIndexes{};  // 描画するインスタンスのインデックスリストの GPU 仮想アドレス
+    D3D12_DRAW_INDEXED_ARGUMENTS args{};                 // DrawIndexedInstanced の引数
+};
+
 // 頂点データ
 Vertex vertexData[] = {
     { {-1.0f, 1.0f, 0.0f}, {0, 0}},
@@ -69,14 +80,21 @@ resource::FrameBuffer frameBuffer(frameBufferNum);  // フレームバッファ
 DescriptorHeap        descriptorHeap{};             // ディスクリプタヒープ
 resource::Mesh        mesh{};                       // メッシュ
 
-resource::ConstantBufferObj<ConstantBufferFormat>              sceneData{};          // シーンデータ
-resource::ShaderResourceObj<InstanceBufferFormat, instanceNum> instanceData{};       // 各インスタンスデータ
-resource::ConstantBufferObj<camera::Frustum>                   frustumData{};        // フラスタムデータ
-resource::UnorderedAccessObj<int>                              drawInstanceCount{};  // 描画するインスタンスのカウント
-resource::UnorderedAccessObj<int, instanceNum>                 drawInstanceIndex{};  // 描画するインスタンスのインデックス（同一リソースで SRV UAV の両方を作る）
+resource::ConstantBufferObj<ConstantBufferFormat>              sceneData{};            // シーンデータ
+resource::ShaderResourceObj<InstanceBufferFormat, instanceNum> instanceData{};         // 各インスタンスデータ
+resource::ConstantBufferObj<camera::Frustum>                   frustumData{};          // フラスタムデータ
+resource::UnorderedAccessObj<int, instanceNum>                 drawInstanceIndexes{};  // 描画するインスタンスのインデックスリスト（UAV のみ作成する）
+resource::UnorderedAccessObj<IndirectArgs>                     indirectArgs{};         // ExecuteIndirect 用引数バッファ
+
+graphics::GraphicsRootSignature graphicsRootSignature{};  // グラフィックスルートシグネチャ
+graphics::ComputeRootSignature  computeRootSignature{};   // コンピュートルートシグネチャ
+graphics::CommandSignature      drawCommandSignature{};   // ExecuteIndirect 用コマンドシグネチャ
 
 graphics::GraphicsPipelineStateObject graphicsPso{};  // グラフィックスパイプラインステートオブジェクト
 graphics::ComputePipelineStateObject  computePso{};   // コンピュートパイプラインステートオブジェクト
+
+graphics::Shader drawShader{};     // インスタンス描画シェーダ
+graphics::Shader computeShader{};  // コンピュートシェーダ
 
 Fence    fence{};         // コマンドフェンス
 uint64_t fenceValue{};    // フェンス値
@@ -122,16 +140,17 @@ bool appUpdate() noexcept {
         {
             TIME_CHECK_SCORP("更新");
 
-			// 1 が入力されていたら CPU でカリングする
+            // 1 が入力されていたら CPU でカリングする
             auto useCpuCulling = input::Input::instance().getKey('1');
-
-            // 描画するインスタンス数
-            auto drawCount = 0;
 
             if (!useCpuCulling) {
                 // GPU による視錐台カリング
 
-				// コンピュートコマンド作成
+                // 前フレームのフェンス保証のもと、instanceCount を GPU 実行前にリセット
+                indirectArgs.map();
+                indirectArgs->args.InstanceCount = 0;
+
+                // コンピュートコマンド作成
                 commandListCompute.reset();
                 computePso.setToCommandList(commandListCompute);
                 descriptorHeap.setToCommandList(commandListCompute);
@@ -140,46 +159,45 @@ bool appUpdate() noexcept {
                 sceneData.setToCommandList(commandListCompute, ViewType::CBV, 0);
                 frustumData.setToCommandList(commandListCompute, ViewType::CBV, 1);
                 instanceData.setToCommandList(commandListCompute, ViewType::SRV, 2);
-                drawInstanceIndex.setToCommandList(commandListCompute, ViewType::UAV, 3);
-                drawInstanceCount.setToCommandList(commandListCompute, ViewType::UAV, 4);
+                drawInstanceIndexes.setToCommandList(commandListCompute, ViewType::UAV, 3);
+                indirectArgs.setToCommandList(commandListCompute, ViewType::UAV, 4);
 
                 // 計算開始
                 commandListCompute.get()->Dispatch(8, 8, 8);
-				// リソース書き込み完了のバリア
-                drawInstanceCount.resourceBarrier(commandListCompute, D3D12_RESOURCE_BARRIER_TYPE_UAV);
+                // indirectArgs への書き込み完了バリア
+                indirectArgs.resourceBarrier(commandListCompute, D3D12_RESOURCE_BARRIER_TYPE_UAV);
 
-				commandListCompute.get()->Close();
+                commandListCompute.get()->Close();
 
-                // コマンドリスト実行
-                std::array<ID3D12CommandList*, 1> lists{commandListCompute.get()};
-                commandQueueCompute.get()->ExecuteCommandLists(lists.size(), static_cast<ID3D12CommandList**>(lists.data()));
+                // コンピュートコマンドリスト実行
+                std::array<ID3D12CommandList*, 1> computeLists{commandListCompute.get()};
+                commandQueueCompute.get()->ExecuteCommandLists(computeLists.size(), static_cast<ID3D12CommandList**>(computeLists.data()));
 
-                // 計算結果（描画インスタンスのカウント）を CPU で利用する為、GPU と CPU を同期させなければならない
+                // コンピュートキューの完了をフェンスでシグナル
                 fenceValue++;
                 commandQueueCompute.get()->Signal(fence.get(), fenceValue);
-                if (fence.get()->GetCompletedValue() < fenceValue) {
-                    fence.get()->SetEventOnCompletion(fenceValue, waitGpuEvent);
-                    WaitForSingleObject(waitGpuEvent, INFINITE);
-                }
 
-                // 計算結果を取得する
-                drawInstanceCount.map();
-                drawCount            = drawInstanceCount[0];
-                drawInstanceCount[0] = 0;
-                drawInstanceCount.unmap();
+                // グラフィクスキューを GPU サイドでコンピュート完了まで待機させる（CPU ブロックなし）
+                commandQueue.get()->Wait(fence.get(), fenceValue);
 
             } else {
                 // CPU による視錐台カリング
-                drawInstanceIndex.map();
+                auto drawCount = 0;
+                drawInstanceIndexes.map();
                 for (auto i = 0; i < instanceNum; ++i) {
                     if (camera::isPositionInFrustum(frustum, position[i])) {
-                        drawInstanceIndex[drawCount++] = i;
+                        drawInstanceIndexes[drawCount++] = i;
                     }
                 }
-                drawInstanceIndex.unmap();
+                drawInstanceIndexes.unmap();
+
+                // 引数バッファを CPU から直接書き込む
+                indirectArgs.map();
+                *indirectArgs = {drawInstanceIndexes.resource()->GetGPUVirtualAddress(), 6, static_cast<uint32_t>(drawCount), 0, 0, 0};
+                indirectArgs.unmap();
             }
 
-            // 描画処理
+            // 描画処理（GPU・CPU カリング共通）
             {
                 // 描画開始
                 commandListBegin.reset();
@@ -196,16 +214,13 @@ bool appUpdate() noexcept {
                 // メッシュ描画に必要な情報を設定
                 sceneData.setToCommandList(commandListDraw, ViewType::CBV, 0);
                 instanceData.setToCommandList(commandListDraw, ViewType::SRV, 1);
-                drawInstanceIndex.setToCommandList(commandListDraw, ViewType::SRV, 2);
 
-                // SRVとしてアクセスできるようにバリア
-                drawInstanceIndex.resourceBarrier(commandListDraw, D3D12_RESOURCE_BARRIER_TYPE_TRANSITION, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-
-                // インスタンス描画
-                commandListDraw.get()->DrawIndexedInstanced(6, drawCount, 0, 0, 0);
-
-                // UAV としてアクセスできるようにバリア
-                drawInstanceIndex.resourceBarrier(commandListDraw, D3D12_RESOURCE_BARRIER_TYPE_TRANSITION, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+                // indirectArgs のリソースバリア( UAV → INDIRECT_ARGUMENT )
+                indirectArgs.resourceBarrier(commandListDraw, D3D12_RESOURCE_BARRIER_TYPE_TRANSITION, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT);
+                // GPU が生成した引数バッファを使ってインスタンス描画
+                commandListDraw.get()->ExecuteIndirect(drawCommandSignature.get(), 1, indirectArgs.resource(), 0, nullptr, 0);
+                // 次フレームの為に indirectArgs のリソースバリア( INDIRECT_ARGUMENT -> UAV)
+                indirectArgs.resourceBarrier(commandListDraw, D3D12_RESOURCE_BARRIER_TYPE_TRANSITION, D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
                 commandListDraw.get()->Close();
 
@@ -282,7 +297,7 @@ INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, INT) {
 
             // シーンデータ用リソース
             sceneData.create();
-            sceneData[0].viewProj = DirectX::XMMatrixTranspose(viewProj);
+            sceneData->viewProj = DirectX::XMMatrixTranspose(viewProj);
 
             // 描画インスタンスデータ用リソース
             instanceData.create();
@@ -297,20 +312,21 @@ INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, INT) {
 
             // フラスタムデータ用リソース
             frustumData.create();
-            frustumData[0] = frustum;
+            *frustumData = frustum;
 
             // 描画するインスタンスのインデックス用リソース
-            drawInstanceIndex.create();
-            // 描画するインスタンスのカウント用リソース
-            drawInstanceCount.create();
+            drawInstanceIndexes.create();
+
+            // ExecuteIndirect 用引数バッファ用リソース
+            indirectArgs.create();
+            *indirectArgs = {drawInstanceIndexes.resource()->GetGPUVirtualAddress(), 6, 0, 0, 0, 0};
 
             // 各リソースのビューを生成する
             sceneData.createView(ViewType::CBV, descriptorHeap);
             frustumData.createView(ViewType::CBV, descriptorHeap);
             instanceData.createView(ViewType::SRV, descriptorHeap);
-            drawInstanceCount.createView(ViewType::UAV, descriptorHeap);
-            drawInstanceIndex.createView(ViewType::UAV, descriptorHeap);
-            drawInstanceIndex.createView(ViewType::SRV, descriptorHeap);
+            indirectArgs.createView(ViewType::UAV, descriptorHeap);
+            drawInstanceIndexes.createView(ViewType::UAV, descriptorHeap);
 
             // フェンス（CPUとGPUの同期オブジェクト）を作成する
             fence.create();
@@ -322,9 +338,20 @@ INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, INT) {
             commandListEnd.create(CommandType::Graphics);
             commandListCompute.create(CommandType::Compute);
 
+            // ルートシグネチャを作成する
+            graphicsRootSignature.create();
+            computeRootSignature.create();
+
+            // ExecuteIndirect 用コマンドシグネチャを作成する
+            drawCommandSignature.create(&graphicsRootSignature, sizeof(IndirectArgs));
+
+            // シェーダを作成する
+            drawShader.create("asset/color_instance.hlsl");
+            computeShader.create("asset/calc.hlsl");
+
             // パイプラインステートオブジェクトを作成する
-            graphicsPso.create();
-            computePso.create();
+            graphicsPso.create(&graphicsRootSignature, &drawShader);
+            computePso.create(&computeRootSignature, &computeShader);
 
             // アプリケーションループ
             while (appUpdate()) {

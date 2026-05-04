@@ -22,6 +22,7 @@ public:
      */
     virtual ~GraphicsPipelineStateObject() = default;
 
+public:
 	//---------------------------------------------------------------------------------
     /**
      * @brief	コマンドリストに設定する
@@ -36,13 +37,5 @@ protected:
      * @return	作成に成功した場合は true
      */
     bool createPipelineState() noexcept override;
-
-    //---------------------------------------------------------------------------------
-    /**
-     * @brief	ルートシグネチャを作成する
-     * @return	作成に成功した場合は true
-     */
-    bool createRootSignature() noexcept override;
-
 };
 }  // namespace dx12::graphics

@@ -73,6 +73,18 @@
     <ClCompile Include="dx12\resource\depth_stencil.cpp">
       <Filter>dx12\resource</Filter>
     </ClCompile>
+    <ClCompile Include="dx12\graphics\root_signature.cpp">
+      <Filter>dx12\graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="dx12\graphics\graphics_root_signature.cpp">
+      <Filter>dx12\graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="dx12\graphics\compute_root_signature.cpp">
+      <Filter>dx12\graphics</Filter>
+    </ClCompile>
+    <ClCompile Include="dx12\graphics\command_signature.cpp">
+      <Filter>dx12\graphics</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="def.h" />
@@ -151,6 +163,18 @@
     <ClInclude Include="dx12\descriptor_handle.h" />
     <ClInclude Include="dx12\resource\depth_stencil.h">
       <Filter>dx12\resource</Filter>
+    </ClInclude>
+    <ClInclude Include="dx12\graphics\root_signature.h">
+      <Filter>dx12\graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="dx12\graphics\graphics_root_signature.h">
+      <Filter>dx12\graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="dx12\graphics\compute_root_signature.h">
+      <Filter>dx12\graphics</Filter>
+    </ClInclude>
+    <ClInclude Include="dx12\graphics\command_signature.h">
+      <Filter>dx12\graphics</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

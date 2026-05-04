@@ -167,9 +167,13 @@
     <ClCompile Include="dx12\device.cpp" />
     <ClCompile Include="dx12\fence.cpp" />
     <ClCompile Include="dx12\gpu_resource.cpp" />
+    <ClCompile Include="dx12\graphics\command_signature.cpp" />
     <ClCompile Include="dx12\graphics\compute_pipeline_state_object.cpp" />
+    <ClCompile Include="dx12\graphics\compute_root_signature.cpp" />
     <ClCompile Include="dx12\graphics\graphics_pipeline_state_object.cpp" />
+    <ClCompile Include="dx12\graphics\graphics_root_signature.cpp" />
     <ClCompile Include="dx12\graphics\pipeline_state_object.cpp" />
+    <ClCompile Include="dx12\graphics\root_signature.cpp" />
     <ClCompile Include="dx12\graphics\shader.cpp" />
     <ClCompile Include="dx12\resource\constant.cpp" />
     <ClCompile Include="dx12\resource\depth_stencil.cpp" />
@@ -195,9 +199,13 @@
     <ClInclude Include="dx12\device.h" />
     <ClInclude Include="dx12\fence.h" />
     <ClInclude Include="dx12\gpu_resource.h" />
+    <ClInclude Include="dx12\graphics\command_signature.h" />
     <ClInclude Include="dx12\graphics\compute_pipeline_state_object.h" />
+    <ClInclude Include="dx12\graphics\compute_root_signature.h" />
     <ClInclude Include="dx12\graphics\graphics_pipeline_state_object.h" />
+    <ClInclude Include="dx12\graphics\graphics_root_signature.h" />
     <ClInclude Include="dx12\graphics\pipeline_state_object.h" />
+    <ClInclude Include="dx12\graphics\root_signature.h" />
     <ClInclude Include="dx12\graphics\shader.h" />
     <ClInclude Include="dx12\resource\constant.h" />
     <ClInclude Include="dx12\resource\depth_stencil.h" />

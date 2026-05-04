@@ -1,14 +1,5 @@
 ﻿#include "dx12/resource/unordered_access.h"
 
-namespace {
-
-//---------------------------------------------------------------------------------
-/** @def
- * アラインメント
- */
-#define ALIGN(size) ((size + D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT - 1) & ~(D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT - 1))
-}  // namespace
-
 namespace dx12::resource {
 
 //---------------------------------------------------------------------------------
@@ -31,7 +22,7 @@ bool UnorderedAccessResource::create(void** data, uint32_t stride, uint32_t num)
     D3D12_RESOURCE_DESC resourceDesc = {};
     resourceDesc.Dimension           = D3D12_RESOURCE_DIMENSION_BUFFER;
     resourceDesc.Alignment           = 0;
-    resourceDesc.Width               = ALIGN((stride * num));
+    resourceDesc.Width               = (stride * num);
     resourceDesc.Height              = 1;
     resourceDesc.DepthOrArraySize    = 1;
     resourceDesc.MipLevels           = 1;

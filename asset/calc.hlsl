@@ -29,15 +29,27 @@ struct InstanceData
 StructuredBuffer<InstanceData> instanceData : register(t0);
 
 // 描画するインスタンスのインデックス
-RWStructuredBuffer<int> drawInstanceIndex : register(u0);
+RWStructuredBuffer<int> drawInstanceIndexes : register(u0);
 
-// 描画するインスタンスのカウント
-RWByteAddressBuffer drawInstanceCount : register(u1);
+// ExecuteIndirect 用の引数バッファ（IndirectArgs 構造体と同レイアウト）
+struct IndirectArgs
+{
+	// インスタンスのインデックスを格納するための領域
+	// 実際には利用されないが、フォーマットを合わせる為に必要
+	uint2 drawInstanceIndexes;
+	
+	// D3D12_DRAW_INDEXED_ARGUMENTS のレイアウト
+	uint indexCountPerInstance;
+	uint instanceCount; // コンピュートシェーダで更新しているのはこれだけ
+	uint startIndexLocation;
+	uint baseVertexLocation;
+	uint startInstanceLocation;
+};
+RWStructuredBuffer<IndirectArgs> indirectArgs : register(u1);
 
 [numthreads(8, 8, 1)]
 void cs(uint3 groupID : SV_GroupID, uint3 groupThreadID : SV_GroupThreadID, uint3 dispatchThreadID : SV_DispatchThreadID)
 {
-	
 	// dispatchThreadID を利用して一次元配列の添え字を計算する
 	uint id = (dispatchThreadID.z * 4096) + (dispatchThreadID.y * 64) + dispatchThreadID.x;
 	float4 pos = instanceData[id].world[3];
@@ -50,9 +62,10 @@ void cs(uint3 groupID : SV_GroupID, uint3 groupThreadID : SV_GroupThreadID, uint
 	visible &= ((dot(planes[3].normal.xyz, pos.xyz) + planes[3].d.x) >= 0);
 	
 	// カリングチェックを通過したので描画するインスタンスとして登録する
-	if (visible) {		
-		int index;
-		drawInstanceCount.InterlockedAdd(0, 1, index);
-		drawInstanceIndex[index] = id;
+	if (visible)
+	{
+		uint index;
+		InterlockedAdd(indirectArgs[0].instanceCount, 1, index);
+		drawInstanceIndexes[index] = id;
 	}
 }

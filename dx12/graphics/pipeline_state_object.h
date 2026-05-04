@@ -2,6 +2,7 @@
 
 #include "dx12/command_list.h"
 #include "dx12/graphics/shader.h"
+#include "dx12/graphics/root_signature.h"
 
 #include "utility/noncopyable.h"
 
@@ -28,10 +29,13 @@ public:
     //---------------------------------------------------------------------------------
     /**
      * @brief	パイプラインステートオブジェクトを作成する
+	 * @param	rootSignature	ルートシグネチャ
+	 * @param	shader			シェーダ
      * @return	作成に成功した場合は true
      */
-    bool create() noexcept;
+    bool create(const RootSignature* rootSignature, const Shader* shader) noexcept;
 
+public:
     //---------------------------------------------------------------------------------
     /**
      * @brief	コマンドリストに設定する
@@ -47,16 +51,9 @@ protected:
      */
     virtual bool createPipelineState() noexcept = 0;
 
-    //---------------------------------------------------------------------------------
-    /**
-     * @brief	ルートシグネチャを作成する
-     * @return	作成に成功した場合は true
-     */
-    virtual bool createRootSignature() noexcept = 0;
-
 protected:
     Microsoft::WRL::ComPtr<ID3D12PipelineState> pipelineState_{};  ///< パイプラインステート
-    Microsoft::WRL::ComPtr<ID3D12RootSignature> rootSignature_{};  ///< ルートシグネチャ
-    std::unique_ptr<Shader>                     shader_{};         ///< シェーダ
+    const Shader*                               shader_{};         ///< シェーダの参照
+    const RootSignature*                        rootSignature_{};  ///< ルートシグネチャの参照
 };
 }  // namespace dx12::graphics
