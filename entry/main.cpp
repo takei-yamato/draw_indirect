@@ -69,11 +69,11 @@ resource::FrameBuffer frameBuffer(frameBufferNum);  // フレームバッファ
 DescriptorHeap        descriptorHeap{};             // ディスクリプタヒープ
 resource::Mesh        mesh{};                       // メッシュ
 
-resource::ConstantBufferObj<ConstantBufferFormat>              sceneData{};          // シーンデータ
-resource::ShaderResourceObj<InstanceBufferFormat, instanceNum> instanceData{};       // 各インスタンスデータ
-resource::ConstantBufferObj<camera::Frustum>                   frustumData{};        // フラスタムデータ
-resource::UnorderedAccessObj<int>                              drawInstanceCount{};  // 描画するインスタンスのカウント
-resource::UnorderedAccessObj<int, instanceNum>                 drawInstanceIndex{};  // 描画するインスタンスのインデックス（同一リソースで SRV UAV の両方を作る）
+resource::ConstantBufferObj<ConstantBufferFormat>              sceneData{};           // シーンデータ
+resource::ShaderResourceObj<InstanceBufferFormat, instanceNum> instanceData{};        // 各インスタンスデータ
+resource::ConstantBufferObj<camera::Frustum>                   frustumData{};         // フラスタムデータ
+resource::UnorderedAccessObj<int>                              drawInstanceCount{};   // 描画するインスタンスのカウント
+resource::UnorderedAccessObj<int, instanceNum>                 drawInstanceIndexes{}; // 描画するインスタンスのインデックスリスト（同一リソースで SRV UAV の両方を作る）
 
 graphics::GraphicsPipelineStateObject graphicsPso{};  // グラフィックスパイプラインステートオブジェクト
 graphics::ComputePipelineStateObject  computePso{};   // コンピュートパイプラインステートオブジェクト
@@ -140,7 +140,7 @@ bool appUpdate() noexcept {
                 sceneData.setToCommandList(commandListCompute, ViewType::CBV, 0);
                 frustumData.setToCommandList(commandListCompute, ViewType::CBV, 1);
                 instanceData.setToCommandList(commandListCompute, ViewType::SRV, 2);
-                drawInstanceIndex.setToCommandList(commandListCompute, ViewType::UAV, 3);
+                drawInstanceIndexes.setToCommandList(commandListCompute, ViewType::UAV, 3);
                 drawInstanceCount.setToCommandList(commandListCompute, ViewType::UAV, 4);
 
                 // 計算開始
@@ -170,13 +170,13 @@ bool appUpdate() noexcept {
 
             } else {
                 // CPU による視錐台カリング
-                drawInstanceIndex.map();
+                drawInstanceIndexes.map();
                 for (auto i = 0; i < instanceNum; ++i) {
                     if (camera::isPositionInFrustum(frustum, position[i])) {
-                        drawInstanceIndex[drawCount++] = i;
+                        drawInstanceIndexes[drawCount++] = i;
                     }
                 }
-                drawInstanceIndex.unmap();
+                drawInstanceIndexes.unmap();
             }
 
             // 描画処理
@@ -196,16 +196,16 @@ bool appUpdate() noexcept {
                 // メッシュ描画に必要な情報を設定
                 sceneData.setToCommandList(commandListDraw, ViewType::CBV, 0);
                 instanceData.setToCommandList(commandListDraw, ViewType::SRV, 1);
-                drawInstanceIndex.setToCommandList(commandListDraw, ViewType::SRV, 2);
+                drawInstanceIndexes.setToCommandList(commandListDraw, ViewType::SRV, 2);
 
                 // SRVとしてアクセスできるようにバリア
-                drawInstanceIndex.resourceBarrier(commandListDraw, D3D12_RESOURCE_BARRIER_TYPE_TRANSITION, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+                drawInstanceIndexes.resourceBarrier(commandListDraw, D3D12_RESOURCE_BARRIER_TYPE_TRANSITION, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
                 // インスタンス描画
                 commandListDraw.get()->DrawIndexedInstanced(6, drawCount, 0, 0, 0);
 
                 // UAV としてアクセスできるようにバリア
-                drawInstanceIndex.resourceBarrier(commandListDraw, D3D12_RESOURCE_BARRIER_TYPE_TRANSITION, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+                drawInstanceIndexes.resourceBarrier(commandListDraw, D3D12_RESOURCE_BARRIER_TYPE_TRANSITION, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
                 commandListDraw.get()->Close();
 
@@ -300,7 +300,7 @@ INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, INT) {
             frustumData[0] = frustum;
 
             // 描画するインスタンスのインデックス用リソース
-            drawInstanceIndex.create();
+            drawInstanceIndexes.create();
             // 描画するインスタンスのカウント用リソース
             drawInstanceCount.create();
 
@@ -309,8 +309,8 @@ INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, INT) {
             frustumData.createView(ViewType::CBV, descriptorHeap);
             instanceData.createView(ViewType::SRV, descriptorHeap);
             drawInstanceCount.createView(ViewType::UAV, descriptorHeap);
-            drawInstanceIndex.createView(ViewType::UAV, descriptorHeap);
-            drawInstanceIndex.createView(ViewType::SRV, descriptorHeap);
+            drawInstanceIndexes.createView(ViewType::UAV, descriptorHeap);
+            drawInstanceIndexes.createView(ViewType::SRV, descriptorHeap);
 
             // フェンス（CPUとGPUの同期オブジェクト）を作成する
             fence.create();

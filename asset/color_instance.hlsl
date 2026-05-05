@@ -18,7 +18,7 @@ struct InstanceData
 StructuredBuffer<InstanceData> instanceData : register(t0);
 
 // 描画するインスタンスのインデックス
-StructuredBuffer<int> drawInstanceIndex : register(t1);
+StructuredBuffer<int> drawInstanceIndexes : register(t1);
 
 // 頂点シェーダ入力内容
 struct VS_INPUT {
@@ -44,7 +44,7 @@ VS_OUTPUT vs(VS_INPUT input) {
     VS_OUTPUT output = (VS_OUTPUT)0;
 
 	// 描画対象のオブジェクトインデックスをインスタンスIDから取得する
-	uint objIndex = drawInstanceIndex[input.instanceId];
+	uint objIndex = drawInstanceIndexes[input.instanceId];
 
 	// 描画に使う情報を objIndex で取得する
 	output.pos = mul(mul(input.pos, instanceData[objIndex].world), viewProj);

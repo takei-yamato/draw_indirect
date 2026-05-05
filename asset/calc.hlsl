@@ -29,7 +29,7 @@ struct InstanceData
 StructuredBuffer<InstanceData> instanceData : register(t0);
 
 // 描画するインスタンスのインデックス
-RWStructuredBuffer<int> drawInstanceIndex : register(u0);
+RWStructuredBuffer<int> drawInstanceIndexes : register(u0);
 
 // 描画するインスタンスのカウント
 RWByteAddressBuffer drawInstanceCount : register(u1);
@@ -53,6 +53,6 @@ void cs(uint3 groupID : SV_GroupID, uint3 groupThreadID : SV_GroupThreadID, uint
 	if (visible) {		
 		int index;
 		drawInstanceCount.InterlockedAdd(0, 1, index);
-		drawInstanceIndex[index] = id;
+		drawInstanceIndexes[index] = id;
 	}
 }
